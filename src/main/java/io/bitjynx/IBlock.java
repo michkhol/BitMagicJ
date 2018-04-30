@@ -1,5 +1,8 @@
 package io.bitjynx;
 
+import java.util.Map;
+import java.util.concurrent.RecursiveTask;
+
 interface IBlock {
   public long size();
   public int cardinality();
@@ -11,4 +14,8 @@ interface IBlock {
    * @return true if bit is set
    */
   public boolean exists(int pos);
+
+  public int lastBitPos();
+
+  public RecursiveTask<Map.Entry<Long, IBlock>> andTask(Long key, IBlock right);
 }
