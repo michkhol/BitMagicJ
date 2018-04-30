@@ -1,12 +1,13 @@
 package io.bitjynx;
 
 import java.util.Arrays;
-import java.util.Comparator;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class BitJynx {
-  final static int BIT_BLOCK_POWER = 16;
+  final static int BIT_BLOCK_POWER = 13; // 8K blocks
   final static int BITS_PER_BLOCK = 1 << BIT_BLOCK_POWER;
 
   // Taken from java.util.Arrays, adapted for 'unsigned short'
@@ -29,12 +30,12 @@ public class BitJynx {
     return -(low + 1);  // key not found.
   }
 
-  static class Block implements IBlock {
+  static class BitBlock implements IBlock {
 
     // Used as 'unsigned short'
     private short[] _positions;
 
-    Block(short[] positions) {
+    BitBlock(short[] positions) {
       this._positions = positions;
     }
 
@@ -53,7 +54,7 @@ public class BitJynx {
     @Override
     public String toString() {
       StringBuilder sb = new StringBuilder();
-      sb.append("Block size ").append(_positions.length).append(": [ ");
+      sb.append("BitBlock size ").append(_positions.length).append(": [ ");
       boolean first = true;
       for(short i: _positions) {
         int v = Short.toUnsignedInt(i); // simulating unsigned int for display
@@ -81,7 +82,7 @@ public class BitJynx {
 
     @Override
     public String toString() {
-      return "Block size " + BITS_PER_BLOCK + ": [ all set ]";
+      return "BitBlock size " + BITS_PER_BLOCK + ": [ all set ]";
     }
   }
 
@@ -121,7 +122,7 @@ public class BitJynx {
           short[] block = new short[bitIdx];
           System.arraycopy(tempBlock, 0, block, 0, bitIdx);
           long blockIdx = blockStart >> BIT_BLOCK_POWER;
-          _blockMap.put(blockIdx, bitIdx == BITS_PER_BLOCK ? _fullBlock : new Block(block));
+          _blockMap.put(blockIdx, bitIdx == BITS_PER_BLOCK ? _fullBlock : new BitBlock(block));
           bitIdx = 0;
         }
         blockStart += BITS_PER_BLOCK;
@@ -134,7 +135,7 @@ public class BitJynx {
       short[] block = new short[bitIdx];
       System.arraycopy(tempBlock, 0, block, 0, bitIdx);
       long blockIdx = blockStart >> BIT_BLOCK_POWER;
-      _blockMap.put(blockIdx, bitIdx == BITS_PER_BLOCK ? _fullBlock : new Block(block));
+      _blockMap.put(blockIdx, bitIdx == BITS_PER_BLOCK ? _fullBlock : new BitBlock(block));
     }
 
   }
@@ -152,10 +153,57 @@ public class BitJynx {
     }
   }
 
-  public int set(long idx, boolean v) {
-    long blockIdx = idx >> BIT_BLOCK_POWER;
-    IBlock b = _blockMap.get(blockIdx);
-    return 0;
+  public BitJynx and(BitJynx v) {
+    Iterator<Map.Entry<Long, IBlock>> left = this._blockMap.entrySet().iterator();
+    Iterator<Map.Entry<Long, IBlock>> right = v._blockMap.entrySet().iterator();
+    LinkedHashMap<Long, IBlock> resultMap = new LinkedHashMap<>();
+
+    while(left.hasNext() && right.hasNext()) {
+      Map.Entry<Long, IBlock> l = left.next();
+      Map.Entry<Long, IBlock> r = right.next();
+      // Advance left
+      while(l.getKey().compareTo(r.getKey()) < 0 && left.hasNext()) l = left.next();
+      // Advance right
+      while(r.getKey().compareTo(l.getKey()) < 0 && right.hasNext()) r = right.next();
+      if (l.getKey().compareTo(r.getKey()) == 0) {
+        // Do 'and' operation
+      }
+    }
+    // Nothing to do here due to 'and' operation
+    return new BitJynx(resultMap, 0, 0);
+  }
+
+  public BitJynx or(BitJynx v) {
+    Iterator<Map.Entry<Long, IBlock>> left = this._blockMap.entrySet().iterator();
+    Iterator<Map.Entry<Long, IBlock>> right = v._blockMap.entrySet().iterator();
+    LinkedHashMap<Long, IBlock> resultMap = new LinkedHashMap<>();
+
+    while(left.hasNext() && right.hasNext()) {
+      Map.Entry<Long, IBlock> l = left.next();
+      Map.Entry<Long, IBlock> r = right.next();
+      // Advance left
+      while(l.getKey().compareTo(r.getKey()) < 0 && left.hasNext()) {
+        resultMap.put(l.getKey(), l.getValue());
+        l = left.next();
+      }
+      // Advance right
+      while(r.getKey().compareTo(l.getKey()) < 0 && right.hasNext()) {
+        resultMap.put(r.getKey(), r.getValue());
+        r = right.next();
+      }
+      if (l.getKey().compareTo(r.getKey()) == 0) {
+        // Do 'or' operation
+      }
+    }
+    while(left.hasNext()) {
+      Map.Entry<Long, IBlock> l = left.next();
+      resultMap.put(l.getKey(), l.getValue());
+    }
+    while(right.hasNext()) {
+      Map.Entry<Long, IBlock> r = right.next();
+      resultMap.put(r.getKey(), r.getValue());
+    }
+    return new BitJynx(resultMap, 0, 0);
   }
 
   @Override
