@@ -8,6 +8,11 @@ import static io.bitjynx.BitJynx.BITS_PER_BLOCK;
 
 class FullBlock implements IBlock {
 
+  public final static FullBlock instance = new FullBlock();
+
+  @Override
+  public BlockType getType() { return BlockType.FULL_BLOCK; }
+
   @Override
   public long size() { return BITS_PER_BLOCK; }
 
@@ -26,6 +31,16 @@ class FullBlock implements IBlock {
       @Override
       protected Map.Entry<Long, IBlock> compute() {
         return new AbstractMap.SimpleEntry<>(key, right);
+      }
+    };
+  }
+
+  @Override
+  public RecursiveTask<Map.Entry<Long, IBlock>> orTask(Long key, IBlock right) {
+    return new RecursiveTask<Map.Entry<Long, IBlock>>() {
+      @Override
+      protected Map.Entry<Long, IBlock> compute() {
+        return new AbstractMap.SimpleEntry<>(key, instance);
       }
     };
   }

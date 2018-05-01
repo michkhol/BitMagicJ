@@ -3,8 +3,12 @@ package io.bitjynx;
 import java.util.AbstractMap;
 import java.util.Map;
 import java.util.concurrent.RecursiveTask;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
+import java.util.function.Function;
 
 class BitPosBlock implements IBlock {
+
 
   // Used as 'unsigned short'
   private short[] _positions;
@@ -34,6 +38,9 @@ class BitPosBlock implements IBlock {
   }
 
   @Override
+  public BlockType getType() { return BlockType.POS_BLOCK; }
+
+  @Override
   public long size() { return _positions.length; }
 
   @Override
@@ -50,20 +57,22 @@ class BitPosBlock implements IBlock {
     return Short.toUnsignedInt(_positions[_positions.length - 1]);
   }
 
-  static class AndTask extends RecursiveTask<Map.Entry<Long, IBlock>> {
+  static class OpTask extends RecursiveTask<Map.Entry<Long, IBlock>> {
     private final Long _key;
     private final BitPosBlock _v1;
     private final BitPosBlock _v2;
+    private final BinaryOperator<BitPosBlock> _op;
 
-    AndTask(Long key, BitPosBlock v1, BitPosBlock v2) {
+    OpTask(Long key, BitPosBlock v1, BitPosBlock v2, BinaryOperator<BitPosBlock> op) {
       _key = key;
       _v1 = v1;
       _v2 = v2;
+      _op = op;
     }
 
     @Override
     protected Map.Entry<Long, IBlock> compute() {
-      IBlock b = _v1.and(_v2);
+      IBlock b = _op.apply(_v1, _v2);
       return new AbstractMap.SimpleEntry<>(_key, b);
     }
   }
@@ -92,10 +101,44 @@ class BitPosBlock implements IBlock {
     }
   }
 
-  public RecursiveTask<Map.Entry<Long, IBlock>> andTask(Long key, IBlock right) {
-    return new AndTask(key, this, (BitPosBlock)right);
+  private BitPosBlock or(BitPosBlock b) {
+    int i = 0, j = 0, counter = 0;
+    short[] temp = new short[Integer.min(this._positions.length + b._positions.length, BitJynx.BITS_PER_BLOCK)];
+
+    while (i < this._positions.length && j < b._positions.length) {
+      if (this._positions[i] < b._positions[j]) {
+        temp[counter++] = this._positions[i++];
+      }
+      else if (b._positions[j] < this._positions[i]) {
+        temp[counter++] = b._positions[j++];
+      }
+      else {
+        temp[counter++] = this._positions[i++];
+        j++;
+      }
+    }
+    // Add remaining elements
+    while(i < this._positions.length)
+      temp[counter++] = this._positions[i++];
+    while(j < b._positions.length)
+      temp[counter++] = b._positions[j++];
+
+    if (counter == 0)
+      return null;
+    else {
+      short[] result = new short[counter];
+      System.arraycopy(temp, 0, result, 0, counter);
+      return new BitPosBlock(result);
+    }
   }
 
+  public RecursiveTask<Map.Entry<Long, IBlock>> andTask(Long key, IBlock right) {
+    return new OpTask(key, this, (BitPosBlock)right, BitPosBlock::and);
+  }
+
+  public RecursiveTask<Map.Entry<Long, IBlock>> orTask(Long key, IBlock right) {
+    return new OpTask(key, this, (BitPosBlock)right, BitPosBlock::or);
+  }
 
   @Override
   public String toString() {

@@ -4,6 +4,8 @@ import java.util.Map;
 import java.util.concurrent.RecursiveTask;
 
 interface IBlock {
+  public BlockType getType();
+
   public long size();
   public int cardinality();
 
@@ -18,4 +20,5 @@ interface IBlock {
   public int lastBitPos();
 
   public RecursiveTask<Map.Entry<Long, IBlock>> andTask(Long key, IBlock right);
+  public RecursiveTask<Map.Entry<Long, IBlock>> orTask(Long key, IBlock right);
 }
