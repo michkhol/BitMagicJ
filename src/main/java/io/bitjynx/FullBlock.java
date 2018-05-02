@@ -25,25 +25,6 @@ class FullBlock implements IBlock {
   @Override
   public int lastBitPos() { return BITS_PER_BLOCK - 1; }
 
-  @Override
-  public RecursiveTask<Map.Entry<Long, IBlock>> andTask(Long key, IBlock right) {
-    return new RecursiveTask<Map.Entry<Long, IBlock>>() {
-      @Override
-      protected Map.Entry<Long, IBlock> compute() {
-        return new AbstractMap.SimpleEntry<>(key, right);
-      }
-    };
-  }
-
-  @Override
-  public RecursiveTask<Map.Entry<Long, IBlock>> orTask(Long key, IBlock right) {
-    return new RecursiveTask<Map.Entry<Long, IBlock>>() {
-      @Override
-      protected Map.Entry<Long, IBlock> compute() {
-        return new AbstractMap.SimpleEntry<>(key, instance);
-      }
-    };
-  }
 
   @Override
   public String toString() {

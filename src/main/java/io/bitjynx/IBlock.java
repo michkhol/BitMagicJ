@@ -18,7 +18,4 @@ interface IBlock {
   public boolean exists(int pos);
 
   public int lastBitPos();
-
-  public RecursiveTask<Map.Entry<Long, IBlock>> andTask(Long key, IBlock right);
-  public RecursiveTask<Map.Entry<Long, IBlock>> orTask(Long key, IBlock right);
 }

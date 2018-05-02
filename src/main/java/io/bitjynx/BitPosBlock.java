@@ -57,87 +57,77 @@ class BitPosBlock implements IBlock {
     return Short.toUnsignedInt(_positions[_positions.length - 1]);
   }
 
-  static class OpTask extends RecursiveTask<Map.Entry<Long, IBlock>> {
-    private final Long _key;
-    private final BitPosBlock _v1;
-    private final BitPosBlock _v2;
-    private final BinaryOperator<BitPosBlock> _op;
+  static IBlock and(IBlock v1, IBlock v2) {
+    BitPosBlock vv1 = (BitPosBlock)v1;
+    switch(v2.getType()) {
+      case FULL_BLOCK:
+        return new BitPosBlock(vv1._positions);
+      case POS_BLOCK:
+        BitPosBlock b = (BitPosBlock) v2;
+        int i = 0, j = 0, counter = 0;
+        short[] temp = new short[Integer.min(vv1._positions.length, b._positions.length)];
 
-    OpTask(Long key, BitPosBlock v1, BitPosBlock v2, BinaryOperator<BitPosBlock> op) {
-      _key = key;
-      _v1 = v1;
-      _v2 = v2;
-      _op = op;
-    }
-
-    @Override
-    protected Map.Entry<Long, IBlock> compute() {
-      IBlock b = _op.apply(_v1, _v2);
-      return new AbstractMap.SimpleEntry<>(_key, b);
-    }
-  }
-
-  private BitPosBlock and(BitPosBlock b) {
-    int i = 0, j = 0, counter = 0;
-    short[] temp = new short[Integer.min(this._positions.length, b._positions.length)];
-
-    while (i < this._positions.length && j < b._positions.length) {
-      if (this._positions[i] < b._positions[j])
-        i++;
-      else if (b._positions[j] < this._positions[i])
-        j++;
-      else {
-        temp[counter++] = this._positions[i];
-        i++;
-        j++;
-      }
-    }
-    if (counter == 0)
-      return null;
-    else {
-      short[] result = new short[counter];
-      System.arraycopy(temp, 0, result, 0, counter);
-      return new BitPosBlock(result);
+        while (i < vv1._positions.length && j < b._positions.length) {
+          if (vv1._positions[i] < b._positions[j])
+            i++;
+          else if (b._positions[j] < vv1._positions[i])
+            j++;
+          else {
+            temp[counter++] = vv1._positions[i];
+            i++;
+            j++;
+          }
+        }
+        if (counter == 0)
+          return null;
+        else {
+          short[] result = new short[counter];
+          System.arraycopy(temp, 0, result, 0, counter);
+          return new BitPosBlock(result);
+        }
+      default:
+        throw new RuntimeException("Unsupported block type");
     }
   }
 
-  private BitPosBlock or(BitPosBlock b) {
-    int i = 0, j = 0, counter = 0;
-    short[] temp = new short[Integer.min(this._positions.length + b._positions.length, BitJynx.BITS_PER_BLOCK)];
+  static IBlock or(IBlock v1, IBlock v2) {
+    BitPosBlock vv1 = (BitPosBlock)v1;
+    switch(v2.getType()) {
+      case FULL_BLOCK:
+        return FullBlock.instance;
+      case POS_BLOCK:
+        BitPosBlock b = (BitPosBlock)v2;
+        int i = 0, j = 0, counter = 0;
+        short[] temp = new short[Integer.min(vv1._positions.length + b._positions.length, BitJynx.BITS_PER_BLOCK)];
 
-    while (i < this._positions.length && j < b._positions.length) {
-      if (this._positions[i] < b._positions[j]) {
-        temp[counter++] = this._positions[i++];
-      }
-      else if (b._positions[j] < this._positions[i]) {
-        temp[counter++] = b._positions[j++];
-      }
-      else {
-        temp[counter++] = this._positions[i++];
-        j++;
-      }
+        while (i < vv1._positions.length && j < b._positions.length) {
+          if (vv1._positions[i] < b._positions[j]) {
+            temp[counter++] = vv1._positions[i++];
+          }
+          else if (b._positions[j] < vv1._positions[i]) {
+            temp[counter++] = b._positions[j++];
+          }
+          else {
+            temp[counter++] = vv1._positions[i++];
+            j++;
+          }
+        }
+        // Add remaining elements
+        while(i < vv1._positions.length)
+          temp[counter++] = vv1._positions[i++];
+        while(j < b._positions.length)
+          temp[counter++] = b._positions[j++];
+
+        if (counter == 0)
+          return null;
+        else {
+          short[] result = new short[counter];
+          System.arraycopy(temp, 0, result, 0, counter);
+          return new BitPosBlock(result);
+        }
+      default:
+        throw new RuntimeException("Unsupported block type");
     }
-    // Add remaining elements
-    while(i < this._positions.length)
-      temp[counter++] = this._positions[i++];
-    while(j < b._positions.length)
-      temp[counter++] = b._positions[j++];
-
-    if (counter == 0)
-      return null;
-    else {
-      short[] result = new short[counter];
-      System.arraycopy(temp, 0, result, 0, counter);
-      return new BitPosBlock(result);
-    }
-  }
-
-  public RecursiveTask<Map.Entry<Long, IBlock>> andTask(Long key, IBlock right) {
-    return new OpTask(key, this, (BitPosBlock)right, BitPosBlock::and);
-  }
-
-  public RecursiveTask<Map.Entry<Long, IBlock>> orTask(Long key, IBlock right) {
-    return new OpTask(key, this, (BitPosBlock)right, BitPosBlock::or);
   }
 
   @Override
