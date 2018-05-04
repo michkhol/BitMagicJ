@@ -1,4 +1,7 @@
 
+import java.util
+import java.util.stream.LongStream
+
 import io.bitjynx.BitJynx
 import io.bitmagic.core.{OptMode, Strategy}
 import io.bitmagic.java.BitVector
@@ -17,23 +20,53 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
 //    val s = br.readLine
   }
 
-
+  def createRandom(nOfBits: Int, randLimit: Int): Array[Long] = {
+    val bits = new Array[Long](nOfBits)
+    val rand = new Random()
+    for(i <- 0 until nOfBits) {
+      bits(i) = rand.nextInt(randLimit)
+    }
+    util.Arrays.parallelSort(bits)
+    LongStream.of(bits: _*).distinct().toArray
+  }
 
   test("BitJynx create") {
-    val BitsNo = 1000000
-    val RandLimit = 10000000
-    val bits = new Array[Long](BitsNo)
-    val rand = new Random()
-    for(i <- 0 until BitsNo) {
-      bits(i) = rand.nextInt(RandLimit)
-//      print(bits(i) + ",")
-    }
+    val start = System.currentTimeMillis()
+    val BitsNo = 10000000
+    val RandLimit = 100000000
+    val bits = createRandom(BitsNo, RandLimit)
     val bj = new BitJynx(bits)
     println(bj)
+    val created = System.currentTimeMillis()
+    println(s"Created took: ${created - start} ms.")
     bits.foreach { i =>
-//      println(s"$i: ${bj.get(i)}")
-      assert(bj.get(i), s"$i invalid")
+//      println(s"$i: ${bj.getAsLongArray(i)}")
+      assert(bj.get(i), s"at $i")
     }
+    val end = System.currentTimeMillis()
+    println(s"Bit check took: ${end - created} ms.")
+  }
+
+  test("BitJynx serialize") {
+    val start = System.currentTimeMillis()
+    val BitsNo = 10000000
+    val RandLimit = 100000000
+    val bits = createRandom(BitsNo, RandLimit)
+    val bj = new BitJynx(bits)
+    println(bj)
+    val created = System.currentTimeMillis()
+    println(s"Created took: ${created - start} ms.")
+    val ser = bj.toArray
+    println(s"Serialized size: ${ser.length}")
+//    for(i <- 0 until bits.length) {
+//      if (bits(i) != ser(i)) {
+//        println(s"Mismatch at $i, original: ${bits(i)}, serialized: ${ser(i)}")
+//        throw new RuntimeException("Stop")
+//      }
+//    }
+    assert(bits.sameElements(bj.toArray))
+    val end = System.currentTimeMillis()
+    println(s"Array check took: ${end - created} ms.")
   }
 
   test("BitJynx empty") {
@@ -46,12 +79,8 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
   test("BitJynx AND") {
     val BitsNo = 1000000
     val RandLimit = 10000000
-    val bits = new Array[Long](BitsNo)
-    val rand = new Random()
-    for(i <- 0 until BitsNo) {
-      bits(i) = rand.nextInt(RandLimit)
-      //      print(bits(i) + ",")
-    }
+    val bits = createRandom(BitsNo, RandLimit)
+
     val bj = new BitJynx(bits)
     println(bj)
 
@@ -76,12 +105,7 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
   test("BitJynx OR") {
     val BitsNo = 1000000
     val RandLimit = 10000000
-    val bits = new Array[Long](BitsNo)
-    val rand = new Random()
-    for(i <- 0 until BitsNo) {
-      bits(i) = rand.nextInt(RandLimit)
-      //      print(bits(i) + ",")
-    }
+    val bits = createRandom(BitsNo, RandLimit)
     val bj = new BitJynx(bits)
     println(bj)
 
@@ -95,7 +119,7 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
 
     val bj3 = bj1.or(bj2)
     println(bj3)
-    assert(bj3.cardinality() == 2)
+    assert(bj3.cardinality() == 9)
 
   }
 

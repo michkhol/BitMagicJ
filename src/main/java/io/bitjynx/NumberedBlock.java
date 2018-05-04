@@ -1,6 +1,7 @@
 package io.bitjynx;
 
 import java.util.concurrent.RecursiveTask;
+import java.util.function.BinaryOperator;
 
 class NumberedBlock /*implements Comparable<NumberedBlock> */ {
   final int no;
@@ -11,25 +12,23 @@ class NumberedBlock /*implements Comparable<NumberedBlock> */ {
     this.block = b;
   }
 
-  public RecursiveTask<NumberedBlock> andTask(int key, NumberedBlock right) {
-    switch(block.getType()) {
-      case POS_BLOCK:
-        return new OpTask(key, block, right.block, BitPosBlock::and);
-      default:
-        throw new RuntimeException("Insupported block type");
-    }
+  IBlock andOp(NumberedBlock v2) {
+    return block.and(v2.block);
   }
 
-  public RecursiveTask<NumberedBlock> orTask(int key, NumberedBlock right) {
-    switch(block.getType()) {
-      case POS_BLOCK:
-        return new OpTask(key, block, right.block, BitPosBlock::or);
-      default:
-        throw new RuntimeException("Insupported block type");
-    }
+  IBlock orOp(NumberedBlock v2) {
+    return block.or(v2.block);
   }
 
-//  @Override
+  IBlock xorOp(NumberedBlock v2) {
+    return block.xor(v2.block);
+  }
+
+  IBlock subOp(NumberedBlock v2) {
+    return block.sub(v2.block);
+  }
+
+  //  @Override
 //  public int hashCode() { return no; }
 //
 //  @Override

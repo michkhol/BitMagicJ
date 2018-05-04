@@ -1,12 +1,12 @@
 package io.bitjynx;
 
-import java.util.Map;
-import java.util.concurrent.RecursiveTask;
+import java.util.stream.IntStream;
 
 interface IBlock {
-  public BlockType getType();
+  enum Type { EMPTY_BLOCK, FULL_BLOCK, POS_BLOCK, INV_POS_BLOCK }
 
-  public long size();
+  public Type getType();
+
   public int cardinality();
 
   /**
@@ -18,4 +18,13 @@ interface IBlock {
   public boolean exists(int pos);
 
   public int lastBitPos();
+
+  public IntStream stream();
+
+  public IBlock not();
+
+  public IBlock and(IBlock v2);
+  public IBlock or(IBlock v2);
+  public IBlock xor(IBlock v2);
+  public IBlock sub(IBlock v2);
 }
