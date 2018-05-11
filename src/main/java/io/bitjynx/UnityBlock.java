@@ -1,19 +1,17 @@
 package io.bitjynx;
 
-import java.util.AbstractMap;
-import java.util.Map;
-import java.util.concurrent.RecursiveTask;
 import java.util.stream.IntStream;
-import java.util.stream.LongStream;
 
 import static io.bitjynx.BitJynx.BITS_PER_BLOCK;
 
-class FullBlock implements IBlock {
+final class UnityBlock implements IBlock {
 
-  public final static FullBlock instance = new FullBlock();
+  public final static UnityBlock instance = new UnityBlock();
+
+  private UnityBlock() {}
 
   @Override
-  public Type getType() { return Type.FULL_BLOCK; }
+  public Type getType() { return Type.UNITY_BLOCK; }
 
   @Override
   public int cardinality() { return BITS_PER_BLOCK; }
@@ -46,12 +44,25 @@ class FullBlock implements IBlock {
   public IBlock xor(IBlock v2) { return v2.not(); }
 
   @Override
-  public IBlock sub(IBlock v2) {
+  public IBlock nand(IBlock v2) {
     return v2.not();
   }
 
   @Override
   public String toString() {
-    return "FullBlock size " + BITS_PER_BLOCK + ": [ all set ]";
+    return "UnityBlock size " + BITS_PER_BLOCK + ": [ all set ]";
+  }
+
+  @Override
+  public int hashCode() { return 1; }
+
+  @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof UnityBlock))
+      return false;
+    else if (this != o)
+      throw new RuntimeException("Only a single instance of UnitBlock is allowed.");
+    else
+      return true;
   }
 }

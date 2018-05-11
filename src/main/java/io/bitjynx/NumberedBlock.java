@@ -1,8 +1,5 @@
 package io.bitjynx;
 
-import java.util.concurrent.RecursiveTask;
-import java.util.function.BinaryOperator;
-
 class NumberedBlock /*implements Comparable<NumberedBlock> */ {
   final int no;
   final IBlock block;
@@ -25,7 +22,7 @@ class NumberedBlock /*implements Comparable<NumberedBlock> */ {
   }
 
   IBlock subOp(NumberedBlock v2) {
-    return block.sub(v2.block);
+    return block.nand(v2.block);
   }
 
   //  @Override

@@ -4,9 +4,11 @@ import java.util.stream.IntStream;
 
 import static io.bitjynx.BitJynx.BITS_PER_BLOCK;
 
-class EmptyBlock implements IBlock {
+final class EmptyBlock implements IBlock {
 
   public final static EmptyBlock instance = new EmptyBlock();
+
+  private EmptyBlock() {}
 
   @Override
   public Type getType() { return Type.EMPTY_BLOCK; }
@@ -25,7 +27,7 @@ class EmptyBlock implements IBlock {
 
   @Override
   public IBlock not() {
-    return FullBlock.instance;
+    return UnityBlock.instance;
   }
 
   @Override
@@ -44,12 +46,25 @@ class EmptyBlock implements IBlock {
   }
 
   @Override
-  public IBlock sub(IBlock v2) {
-    return FullBlock.instance;
+  public IBlock nand(IBlock v2) {
+    return UnityBlock.instance;
   }
 
   @Override
   public String toString() {
     return "EmptyBlock size " + BITS_PER_BLOCK + ": [ empty ]";
+  }
+
+  @Override
+  public int hashCode() { return 0; }
+
+  @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof EmptyBlock))
+      return false;
+    else if (this != o)
+      throw new RuntimeException("Only a single instance of EmptyBlock is allowed.");
+    else
+      return true;
   }
 }

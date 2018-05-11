@@ -3,7 +3,7 @@ package io.bitjynx;
 import java.util.stream.IntStream;
 
 interface IBlock {
-  enum Type { EMPTY_BLOCK, FULL_BLOCK, POS_BLOCK, INV_POS_BLOCK }
+  enum Type { EMPTY_BLOCK, UNITY_BLOCK, POS_BLOCK, ZERO_POS_BLOCK }
 
   public Type getType();
 
@@ -26,5 +26,5 @@ interface IBlock {
   public IBlock and(IBlock v2);
   public IBlock or(IBlock v2);
   public IBlock xor(IBlock v2);
-  public IBlock sub(IBlock v2);
+  public IBlock nand(IBlock v2);
 }
