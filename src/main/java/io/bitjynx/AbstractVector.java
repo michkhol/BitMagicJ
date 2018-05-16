@@ -2,24 +2,25 @@ package io.bitjynx;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
 public abstract class AbstractVector {
   final static int BIT_BLOCK_POWER = 13; // 8K blocks
   final static int BITS_PER_BLOCK = 1 << BIT_BLOCK_POWER;
 
-  public enum Type { ZERO, ONE }
+//  public enum Type { ZERO, ONE }
 
   protected final ArrayList<NumberedBlock> _blockArray;
-  private final Type _type;
+//  private final Type _type;
 
   /**
    * Creates a new bit vector from array of bit positions
    *
    * @param sortedUnique must contain sorted unique elements, otherwise the behavior is undefined.
    */
-  public AbstractVector(long[] sortedUnique, Type t) {
-    this._type = t;
+  public AbstractVector(int[] sortedUnique/*, Type t*/) {
+//    this._type = t;
     this._blockArray = new ArrayList<>();
     storeData(sortedUnique);
   }
@@ -28,27 +29,27 @@ public abstract class AbstractVector {
    * For internal use only!!!
    * @param blocks
    */
-  protected AbstractVector(ArrayList<NumberedBlock> blocks, Type t) {
-    this._type = t;
+  protected AbstractVector(ArrayList<NumberedBlock> blocks/*, Type t*/) {
+//    this._type = t;
     this._blockArray = new ArrayList<>(blocks);
   }
 
 
-  Type getType() { return _type; }
+//  Type getType() { return _type; }
 
   /**
    * Calculates cardinality
    *
    * @return number of bits in the vector
    */
-  public abstract long cardinality();
+  public abstract int cardinality();
 
   /**
    * Calculates the position of the highest bit
    *
    * @return highest bit position
    */
-  public abstract long getMaxBitPosition();
+  public abstract int getMaxBitPosition();
 
   /**
    * Returns the bit value at the specified position
@@ -56,7 +57,14 @@ public abstract class AbstractVector {
    * @param idx bit position
    * @return true or false
    */
-  public abstract boolean get(long idx);
+  public abstract boolean get(int idx);
+
+  /**
+   * Performs NOT operation and returns a new vector
+   *
+   * @return a new bit vector
+   */
+  public abstract AbstractVector not();
 
   /**
    * Performs AND operation and returns a new vector
@@ -81,45 +89,84 @@ public abstract class AbstractVector {
    * @return a new bit vector
    */
   public abstract AbstractVector xor(AbstractVector v);
+
+  /**
+   * Performs NAND operation and returns a new vector
+   *
+   * @param v operand
+   * @return a new bit vector
+   */
+  public abstract AbstractVector nand(AbstractVector v);
+
+  /**
+   * Performs AND NOT operation and returns a new vector
+   *
+   * @param v operand
+   * @return a new bit vector
+   */
+  public abstract AbstractVector sub(AbstractVector v);
+
   /**
    * Optimizes vector storage, may be slow.
    */
   public abstract AbstractVector optimize();
 
   /**
-   * Deserializes into LongStream
+   * Deserializes the first <code>limit</code> bits into IntStream
+   *
+   * @param limit number of bits to stream
+   * @return stream of sorted bit positions
+   */
+  public abstract IntStream stream(int limit);
+
+  /**
+   * Deserializes the whole vector into IntStream
    *
    * @return stream of sorted bit positions
    */
-  public abstract LongStream stream();
+  public abstract IntStream stream();
 
   /**
-   * Converts to array of long, limited by the index range (0..Integer.MAX_VALUE)
+   * Converts to array of int
    *
    * @return a sorted array of bit positions
    */
-  public long[] toArray() {
-    long size = cardinality();
-    if (size > Integer.MAX_VALUE)
-      throw new RuntimeException("Will not fit into an array due to index constraint");
+  public int[] toArray() {
     return stream().toArray();
+  }
+
+  /**
+   * Converts the first <code>limit</code> bits to array of int
+   *
+   * @param limit number of bits to convert
+   * @return a sorted array of bit positions
+   */
+  public int[] toArray(int limit) {
+    return stream(limit).toArray();
   }
 
   //////////////////////////////////////////// Internal implementation /////////////////////////////////////////////////
 
-  protected ArrayList<NumberedBlock> andLike(ArrayList<NumberedBlock> ba) {
+  /**
+   * Performs intersect operation between two block arrays of the same type
+   *
+   * @param ba1 block array
+   * @param ba2 block array
+   * @return always unity block array
+   */
+  protected static ArrayList<NumberedBlock> intersect(ArrayList<NumberedBlock> ba1, ArrayList<NumberedBlock> ba2) {
     ArrayList<NumberedBlock> resultArray = new ArrayList<>();
     int i = 0, j = 0;
 
-    while (i < _blockArray.size() && j < ba.size()) {
-      NumberedBlock left = this._blockArray.get(i);
-      NumberedBlock right = ba.get(j);
+    while (i < ba1.size() && j < ba2.size()) {
+      NumberedBlock left = ba1.get(i);
+      NumberedBlock right = ba2.get(j);
       if (left.no < right.no)
         i++;
       else if (right.no < left.no)
         j++;
       else {
-        IBlock b = left.andOp(right);
+        IBlock b = left.block.and(right.block); // Returns BitPosBlock regardless of 'right' argument type
         if (b != EmptyBlock.instance)
           resultArray.add(new NumberedBlock(left.no, b));
         i++;
@@ -129,14 +176,52 @@ public abstract class AbstractVector {
     return resultArray;
   }
 
-  protected ArrayList<NumberedBlock> orLike(ArrayList<NumberedBlock> ba) {
-    ArrayList<NumberedBlock> resultArray =
-        new ArrayList<>((int)Long.min((long)this._blockArray.size() + ba.size(), Integer.MAX_VALUE));
+  /**
+   * Performs intersect operation between two block arrays of different types
+   *
+   * @param ba block array
+   * @param bz block array
+   * @return always unity block array
+   */
+  protected static ArrayList<NumberedBlock> intersectZero(ArrayList<NumberedBlock> ba, ArrayList<NumberedBlock> bz) {
+    ArrayList<NumberedBlock> resultArray = new ArrayList<>();
     int i = 0, j = 0;
 
-    while (i < _blockArray.size() && j < ba.size()) {
-      NumberedBlock left = this._blockArray.get(i);
-      NumberedBlock right = ba.get(j);
+    while (i < ba.size() && j < bz.size()) {
+      NumberedBlock left = ba.get(i);
+      NumberedBlock right = bz.get(j);
+      if (left.no < right.no) {
+        resultArray.add(left);
+        i++;
+      }
+      else if (right.no < left.no)
+        j++;
+      else {
+        IBlock b = left.block.and(right.block); // Returns BitPosBlock regardless of 'right' argument type
+        if (b != EmptyBlock.instance)
+          resultArray.add(new NumberedBlock(left.no, b));
+        i++;
+        j++;
+      }
+    }
+    return resultArray;
+  }
+
+  /**
+   * Performs union operation between two block arrays of the same type
+   *
+   * @param ba1 block array
+   * @param ba2 block array
+   * @return always zero block array.
+   */
+  protected static ArrayList<NumberedBlock> union(ArrayList<NumberedBlock> ba1, ArrayList<NumberedBlock> ba2) {
+    ArrayList<NumberedBlock> resultArray =
+        new ArrayList<>((int)Long.min((long)ba1.size() + ba2.size(), Integer.MAX_VALUE));
+    int i = 0, j = 0;
+
+    while (i < ba1.size() && j < ba2.size()) {
+      NumberedBlock left = ba1.get(i);
+      NumberedBlock right = ba2.get(j);
       if (left.no < right.no) {
         resultArray.add(left);
         i++;
@@ -146,29 +231,37 @@ public abstract class AbstractVector {
         j++;
       }
       else {
-        resultArray.add(new NumberedBlock(left.no, left.orOp(right)));
+        resultArray.add(new NumberedBlock(left.no, left.block.or(right.block)));
         i++;
         j++;
       }
     }
     // Add remaining blocks
-    while(i < _blockArray.size()) {
-      resultArray.add(this._blockArray.get(i++));
+    while(i < ba1.size()) {
+      resultArray.add(ba1.get(i++));
     }
-    while(j < ba.size()) {
-      resultArray.add(ba.get(j++));
+    while(j < ba2.size()) {
+      resultArray.add(ba2.get(j++));
     }
     return resultArray;
   }
 
-  protected ArrayList<NumberedBlock> orZeroLike(ArrayList<NumberedBlock> zBlocks) {
+  /**
+   * Performs union operation between block arrays of different types
+   * <code>this</code> must contain a unitiy block array.
+   *
+   * @param ba always zero block array.
+   * @param bz always zero block array.
+   * @return always zero block array.
+   */
+  protected static ArrayList<NumberedBlock> unionZero(ArrayList<NumberedBlock> ba, ArrayList<NumberedBlock> bz) {
     ArrayList<NumberedBlock> resultArray =
-        new ArrayList<>((int)Long.min((long)this._blockArray.size() + zBlocks.size(), Integer.MAX_VALUE));
+        new ArrayList<>((int)Long.min((long)ba.size() + bz.size(), Integer.MAX_VALUE));
     int i = 0, j = 0;
 
-    while (i < _blockArray.size() && j < zBlocks.size()) {
-      NumberedBlock left = this._blockArray.get(i);
-      NumberedBlock right = zBlocks.get(j);
+    while (i < ba.size() && j < bz.size()) {
+      NumberedBlock left = ba.get(i);
+      NumberedBlock right = bz.get(j);
       if (left.no < right.no) {
         i++;
       }
@@ -176,7 +269,7 @@ public abstract class AbstractVector {
         j++;
       }
       else {
-        IBlock b = left.orOp(right);
+        IBlock b = left.block.or(right.block);
         if (b != UnityBlock.instance)
           resultArray.add(new NumberedBlock(left.no, b));
         i++;
@@ -186,14 +279,21 @@ public abstract class AbstractVector {
     return resultArray;
   }
 
-  protected ArrayList<NumberedBlock> xorLike(ArrayList<NumberedBlock> ba) {
+  /**
+   * Performs exclusive disjunction (XOR) operation between two block arrays of the same type
+   *
+   * @param ba1 block array
+   * @param ba2 block array
+   * @return always unity block array
+   */
+  protected static ArrayList<NumberedBlock> exDisjunction(ArrayList<NumberedBlock> ba1, ArrayList<NumberedBlock> ba2) {
     ArrayList<NumberedBlock> resultArray =
-        new ArrayList<>((int)Long.min((long)this._blockArray.size() + ba.size(), Integer.MAX_VALUE));
+        new ArrayList<>((int)Long.min((long)ba1.size() + ba2.size(), Integer.MAX_VALUE));
     int i = 0, j = 0;
 
-    while (i < _blockArray.size() && j < ba.size()) {
-      NumberedBlock left = this._blockArray.get(i);
-      NumberedBlock right = ba.get(j);
+    while (i < ba1.size() && j < ba2.size()) {
+      NumberedBlock left = ba1.get(i);
+      NumberedBlock right = ba2.get(j);
       if (left.no < right.no) {
         resultArray.add(left);
         i++;
@@ -203,7 +303,7 @@ public abstract class AbstractVector {
         j++;
       }
       else {
-        IBlock b = left.xorOp(right);
+        IBlock b = left.block.xor(right.block);
         if (b != EmptyBlock.instance)
           resultArray.add(new NumberedBlock(left.no, b));
         i++;
@@ -211,25 +311,32 @@ public abstract class AbstractVector {
       }
     }
     // Add remaining blocks
-    while(i < _blockArray.size()) {
-      resultArray.add(this._blockArray.get(i++));
+    while(i < ba1.size()) {
+      resultArray.add(ba1.get(i++));
     }
-    while(j < ba.size()) {
-      resultArray.add(ba.get(j++));
+    while(j < ba2.size()) {
+      resultArray.add(ba2.get(j++));
     }
     return resultArray;
   }
 
-  protected ArrayList<NumberedBlock> xorZeroLike(ArrayList<NumberedBlock> ba) {
+  /**
+   * Performs exclusive disjunction (XOR) operation between two block arrays of different types
+   *
+   * @param ba zero block array
+   * @param bz zero block array
+   * @return zero block array
+   */
+  protected static ArrayList<NumberedBlock> exDisjunctionZero(ArrayList<NumberedBlock> ba, ArrayList<NumberedBlock> bz) {
     ArrayList<NumberedBlock> resultArray =
-        new ArrayList<>((int)Long.min((long)this._blockArray.size() + ba.size(), Integer.MAX_VALUE));
+        new ArrayList<>((int)Long.min((long)ba.size() + bz.size(), Integer.MAX_VALUE));
     int i = 0, j = 0;
 
-    while (i < _blockArray.size() && j < ba.size()) {
-      NumberedBlock left = this._blockArray.get(i);
-      NumberedBlock right = ba.get(j);
+    while (i < ba.size() && j < bz.size()) {
+      NumberedBlock left = ba.get(i);
+      NumberedBlock right = bz.get(j);
       if (left.no < right.no) {
-        resultArray.add(left);
+//        resultArray.add(left);
         i++;
       }
       else if (right.no < left.no) {
@@ -237,19 +344,16 @@ public abstract class AbstractVector {
         j++;
       }
       else {
-        IBlock b = left.xorOp(right);
-        if (b != EmptyBlock.instance)
+        IBlock b = left.block.xor(right.block);
+        if (b != UnityBlock.instance)
           resultArray.add(new NumberedBlock(left.no, b));
         i++;
         j++;
       }
     }
     // Add remaining blocks
-    while(i < _blockArray.size()) {
-      resultArray.add(this._blockArray.get(i++));
-    }
-    while(j < ba.size()) {
-      resultArray.add(ba.get(j++));
+    while(j < bz.size()) {
+      resultArray.add(bz.get(j++));
     }
     return resultArray;
   }
@@ -259,7 +363,7 @@ public abstract class AbstractVector {
    *
    * @param bits - bit position array, must be sorted!!!
    */
-  protected void storeData(long[] bits) {
+  protected void storeData(int[] bits) {
     short[] tempBlock = new short[BITS_PER_BLOCK];
     int blockStart = 0;
     int bitIdx = 0;
@@ -308,5 +412,25 @@ public abstract class AbstractVector {
     return null;  // key not found
   }
 
+//  // Using polymorphism to tell one type from another
+  protected abstract AbstractVector andOp(UnityVector v);
+
+  protected abstract AbstractVector andOp(ZeroVector v);
+
+  protected abstract AbstractVector orOp(UnityVector v);
+
+  protected abstract AbstractVector orOp(ZeroVector v);
+
+  protected abstract AbstractVector xorOp(UnityVector v);
+
+  protected abstract AbstractVector xorOp(ZeroVector v);
+
+  protected abstract AbstractVector nandOp(UnityVector v);
+
+  protected abstract AbstractVector nandOp(ZeroVector v);
+
+  protected abstract AbstractVector subOp(UnityVector v);
+
+  protected abstract AbstractVector subOp(ZeroVector v);
 }
 

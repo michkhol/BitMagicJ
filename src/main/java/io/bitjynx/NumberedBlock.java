@@ -9,22 +9,6 @@ class NumberedBlock /*implements Comparable<NumberedBlock> */ {
     this.block = b;
   }
 
-  IBlock andOp(NumberedBlock v2) {
-    return block.and(v2.block);
-  }
-
-  IBlock orOp(NumberedBlock v2) {
-    return block.or(v2.block);
-  }
-
-  IBlock xorOp(NumberedBlock v2) {
-    return block.xor(v2.block);
-  }
-
-  IBlock subOp(NumberedBlock v2) {
-    return block.nand(v2.block);
-  }
-
   //  @Override
 //  public int hashCode() { return no; }
 //

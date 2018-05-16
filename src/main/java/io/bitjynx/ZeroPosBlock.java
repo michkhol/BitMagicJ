@@ -40,19 +40,9 @@ class ZeroPosBlock extends AbstractBitPosBlock {
     }
   }
 
-  private static class Counter {
-    private int _cnt = 0;
-    Counter(int start) {
-      _cnt = start;
-    }
-
-    public int get() { return _cnt; }
-    public void inc() { ++_cnt; }
-  }
-
   @Override
   public IntStream stream() {
-    final Counter idx = new Counter(0);
+    final Counter idx = new Counter(0); // Using special class to use final for closure
     return IntStream.range(0, BitJynx.BITS_PER_BLOCK).filter(i -> {
       int pos = Short.toUnsignedInt(_positions[idx.get()]);
       if (pos == i) {
@@ -123,7 +113,7 @@ class ZeroPosBlock extends AbstractBitPosBlock {
       }
       case ZERO_POS_BLOCK: {
         ZeroPosBlock b = (ZeroPosBlock)v2;
-        return new BitPosBlock(xorLike(this._positions, b._positions));
+        return newBitPosBlock(xorLike(this._positions, b._positions));
       }
       default:
         throw new RuntimeException("Unsupported block type");
@@ -238,6 +228,7 @@ class ZeroPosBlock extends AbstractBitPosBlock {
     System.arraycopy(temp, 0, result, 0, counter);
     return result;
   }
+
 
   /**
    * Performs XOR operation with unity array

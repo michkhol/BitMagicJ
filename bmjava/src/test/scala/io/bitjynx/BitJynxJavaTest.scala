@@ -1,7 +1,7 @@
 package io.bitjynx
 
 import java.util
-import java.util.stream.LongStream
+import java.util.stream.{IntStream, LongStream}
 
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
@@ -30,14 +30,14 @@ object BitJynxJavaTest {
     new BitPosBlock(posArr)
   }
 
-  def createRandom(nOfBits: Int, randLimit: Int): Array[Long] = {
-    val bits = new Array[Long](nOfBits)
+  def createRandom(nOfBits: Int, randLimit: Int): Array[Int] = {
+    val bits = new Array[Int](nOfBits)
     val rand = new Random()
     for(i <- 0 until nOfBits) {
       bits(i) = rand.nextInt(randLimit)
     }
     util.Arrays.parallelSort(bits)
-    LongStream.of(bits: _*).distinct().toArray
+    IntStream.of(bits: _*).distinct().toArray
   }
 
 }
@@ -78,10 +78,11 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
 
     val x = even.and(odd.not())
     assert(x.isInstanceOf[BitPosBlock])
-    assert(AbstractBitPosBlock.isEquivalent(x.asInstanceOf[BitPosBlock],even))
+    assert(AbstractBitPosBlock.isEquivalent(x.asInstanceOf[BitPosBlock], even))
   }
 
   test("BitPosBlock - or") {
+    // With BitPosBlock
     val b1 = bitPosBlock(0, 1, 24, 35, 540, 3456, 8000)
     assert(b1.or(UnityBlock.instance).eq(UnityBlock.instance))
 
@@ -97,6 +98,14 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
     val even = makeEvenBlock
     val odd = makeOddBlock
     assert(even.or(odd).eq(UnityBlock.instance))
+
+    // With ZeroPosBlock
+    val zb2 = b2.not()
+    assert(b1.or(zb2).cardinality() == BitJynx.BITS_PER_BLOCK - 5)
+
+    val x = even.or(odd.not())
+    assert(x.isInstanceOf[ZeroPosBlock])
+    assert(AbstractBitPosBlock.isEquivalent(x.asInstanceOf[ZeroPosBlock], even))
   }
 
   test("BitPosBlock - xor") {
@@ -116,8 +125,15 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
 
     val even = makeEvenBlock
     val odd = makeOddBlock
-    assert(even.or(odd).eq(UnityBlock.instance))
+    assert(even.xor(odd).eq(UnityBlock.instance))
     assert(even.xor(even).eq(EmptyBlock.instance))
+
+    // With ZeroPosBlock
+    val zb2 = b2.not()
+    assert(b1.xor(zb2).cardinality() == BitJynx.BITS_PER_BLOCK - 10)
+
+    val x = even.xor(odd.not())
+    assert(x.eq(EmptyBlock.instance))
   }
 
   test("BitPosBlock - nand") {
@@ -136,6 +152,14 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
     val even = makeEvenBlock
     val odd = makeOddBlock
     assert(even.nand(odd).eq(UnityBlock.instance))
+
+    // With ZeroPosBlock
+    val zb2 = b2.not()
+    assert(b1.nand(zb2).cardinality() == BitJynx.BITS_PER_BLOCK - 5)
+
+    val x = even.nand(odd.not())
+    assert(x.isInstanceOf[ZeroPosBlock])
+    assert(AbstractBitPosBlock.isEquivalent(x.asInstanceOf[ZeroPosBlock], odd))
   }
 
   test("BitJynx create") {
@@ -148,7 +172,7 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
     val created = System.currentTimeMillis()
     println(s"Created took: ${created - start} ms.")
     bits.foreach { i =>
-//      println(s"$i: ${bj.getAsLongArray(i)}")
+//      println(s"$i: ${bj.getAsIntArray(i)}")
       assert(bj.get(i), s"at $i")
     }
     val end = System.currentTimeMillis()
@@ -177,8 +201,24 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
     println(s"Array check took: ${end - created} ms.")
   }
 
+  test("BitJynx serialize with limit") {
+    val start = System.currentTimeMillis()
+    val BitsNo = 10000000
+    val RandLimit = 100000000
+    val bits = createRandom(BitsNo, RandLimit)
+    val bj = new BitJynx(bits)
+    println(bj)
+    val created = System.currentTimeMillis()
+    println(s"Created took: ${created - start} ms.")
+    val ser = bj.toArray
+    println(s"Serialized size: ${ser.length}")
+    assert(bits.sameElements(bj.toArray))
+    val end = System.currentTimeMillis()
+    println(s"Array check took: ${end - created} ms.")
+  }
+
   test("BitJynx empty") {
-    val bits = new Array[Long](0)
+    val bits = new Array[Int](0)
     val bj = new BitJynx(bits)
     assert(bj.cardinality() == 0)
   }
@@ -192,11 +232,11 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
     val bj = new BitJynx(bits)
     println(bj)
 
-    val bits1 = Array[Long](1,2,3,5,6, 60000, 80000)
+    val bits1 = Array[Int](1,2,3,5,6, 60000, 80000)
     val bj1 = new BitJynx(bits1)
     println(bj1)
 
-    val bits2 = Array[Long](2, 1001,3001,60000)
+    val bits2 = Array[Int](2, 1001,3001,60000)
     val bj2 = new BitJynx(bits2)
     println(bj2)
 
@@ -217,11 +257,11 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
     val bj = new BitJynx(bits)
     println(bj)
 
-    val bits1 = Array[Long](1,2,3,5,6, 60000, 80000)
+    val bits1 = Array[Int](1,2,3,5,6, 60000, 80000)
     val bj1 = new BitJynx(bits1)
     println(bj1)
 
-    val bits2 = Array[Long](2, 1001,3001,60000)
+    val bits2 = Array[Int](2, 1001,3001,60000)
     val bj2 = new BitJynx(bits2)
     println(bj2)
 

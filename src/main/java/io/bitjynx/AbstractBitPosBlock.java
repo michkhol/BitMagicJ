@@ -50,7 +50,7 @@ abstract class AbstractBitPosBlock implements IBlock {
       if (b2 instanceof BitPosBlock)
         return Arrays.equals(b1._positions, b2._positions);
       else if (b2 instanceof ZeroPosBlock) {
-        return ((ZeroPosBlock) b2).xorOnes(b1._positions).length == 0;
+        return ((ZeroPosBlock) b2).xorOnes(b1._positions).length == BitJynx.BITS_PER_BLOCK;
       }
       else
         return false;
@@ -59,7 +59,7 @@ abstract class AbstractBitPosBlock implements IBlock {
       if (b2 instanceof ZeroPosBlock)
         return Arrays.equals(b1._positions, b2._positions);
       else if (b2 instanceof BitPosBlock) {
-        return ((ZeroPosBlock) b1).xorOnes(b2._positions).length == 0;
+        return ((ZeroPosBlock) b1).xorOnes(b2._positions).length == BitJynx.BITS_PER_BLOCK;
       }
       else
         return false;
@@ -134,6 +134,13 @@ abstract class AbstractBitPosBlock implements IBlock {
     return result;
   }
 
+  /**
+   * Performs exclusive disjunction operation (XOR), good for both unity and zero blocks
+   *
+   * @param positions1 pos array
+   * @param positions2 pos array
+   * @return unity pos array
+   */
   protected static short[] xorLike(short[] positions1, short[] positions2) {
     int i = 0, j = 0, counter = 0;
     short[] temp = new short[Integer.min(positions1.length + positions2.length, BitJynx.BITS_PER_BLOCK)];

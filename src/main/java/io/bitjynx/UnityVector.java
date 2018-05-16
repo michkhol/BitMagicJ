@@ -2,17 +2,18 @@ package io.bitjynx;
 
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
-public class UnityVector extends AbstractVector {
+public final class UnityVector extends AbstractVector {
 
   /**
    * Creates a new bit vector from array of bit positions
    *
    * @param sortedUnique must contain sorted unique elements, otherwise the behavior is undefined.
    */
-  UnityVector(long[] sortedUnique) {
-    super(sortedUnique, Type.ONE);
+  UnityVector(int[] sortedUnique) {
+    super(sortedUnique/*, Type.ONE*/);
   }
 
   /**
@@ -20,16 +21,16 @@ public class UnityVector extends AbstractVector {
    *
    * @param supplier must provide a sorted unique array of long
    */
-  public UnityVector(LongArraySupplier supplier) {
-    this(supplier.getAsLongArray());
+  public UnityVector(IntArraySupplier supplier) {
+    this(supplier.getAsIntArray());
   }
 
   /**
    * For internal use only!!!
    * @param blocks
    */
-  private UnityVector(ArrayList<NumberedBlock> blocks) {
-    super(blocks, Type.ONE);
+  UnityVector(ArrayList<NumberedBlock> blocks) {
+    super(blocks/*, Type.ONE*/);
   }
 
   /**
@@ -37,9 +38,10 @@ public class UnityVector extends AbstractVector {
    *
    * @return number of bits in the vector
    */
-  public long cardinality() {
+  @Override
+  public int cardinality() {
     if (_blockArray != null )
-      return _blockArray.stream().mapToLong(x -> x.block.cardinality()).sum();
+      return _blockArray.stream().mapToInt(x -> x.block.cardinality()).sum();
     else
       return 0;
   }
@@ -49,13 +51,14 @@ public class UnityVector extends AbstractVector {
    *
    * @return highest bit position
    */
-  public long getMaxBitPosition() {
+  @Override
+  public int getMaxBitPosition() {
     if (this._blockArray != null && !this._blockArray.isEmpty()) {
       NumberedBlock lastEntry = this._blockArray.get(this._blockArray.size() - 1);
       if (lastEntry == null)
         return 0;
       else {
-        return ((long)lastEntry.no << BIT_BLOCK_POWER) + lastEntry.block.lastBitPos();
+        return (lastEntry.no << BIT_BLOCK_POWER) + lastEntry.block.lastBitPos();
       }
     }
     else
@@ -68,17 +71,25 @@ public class UnityVector extends AbstractVector {
    * @param idx bit position
    * @return true or false
    */
-  public boolean get(long idx) {
+  @Override
+  public boolean get(int idx) {
     // find the block
-    long blockIdx = idx >> BIT_BLOCK_POWER;
-    if (blockIdx > Integer.MAX_VALUE)
-      throw new IllegalArgumentException("Index is out of range");
-    NumberedBlock found = indexedBinarySearch(_blockArray, (int)blockIdx);
+    int blockIdx = idx >> BIT_BLOCK_POWER;
+    NumberedBlock found = indexedBinarySearch(_blockArray, blockIdx);
     if (found == null) return false;
     else {
-      int pos = (int)(idx - (blockIdx << BIT_BLOCK_POWER));
+      int pos = idx - (blockIdx << BIT_BLOCK_POWER);
       return found.block.exists(pos);
     }
+  }
+
+  @Override
+  public AbstractVector not() {
+    ArrayList<NumberedBlock> al = new ArrayList<>(this._blockArray.size());
+    for(NumberedBlock nb : this._blockArray) {
+      al.add(new NumberedBlock(nb.no, nb.block.not()));
+    }
+    return new ZeroVector(al);
   }
 
   /**
@@ -87,14 +98,16 @@ public class UnityVector extends AbstractVector {
    * @param v operand
    * @return a new bit vector
    */
+  @Override
   public AbstractVector and(AbstractVector v) {
-    switch(v.getType()) {
-      case ONE:
-      case ZERO:
-        return new UnityVector(andLike(v._blockArray));
-      default:
-        throw new RuntimeException("Invalid AbstractVector type");
-    }
+    return v.andOp(this);
+//    switch(v.getType()) {
+//      case ONE:
+//      case ZERO:
+//        return new UnityVector(intersect(v._blockArray));
+//      default:
+//        throw new RuntimeException("Invalid AbstractVector type");
+//    }
   }
 
   /**
@@ -103,15 +116,17 @@ public class UnityVector extends AbstractVector {
    * @param v operand
    * @return a new bit vector
    */
+  @Override
   public AbstractVector or(AbstractVector v) {
-    switch (v.getType()) {
-      case ONE:
-        return new UnityVector(orLike(v._blockArray));
-      case ZERO:
-        return new ZeroVector(orZeroLike(v._blockArray));
-      default:
-        throw new RuntimeException("Invalid AbstractVector type");
-    }
+    return v.orOp(this);
+//    switch (v.getType()) {
+//      case ONE:
+//        return new UnityVector(union(v._blockArray));
+//      case ZERO:
+//        return new ZeroVector(unionZero(v._blockArray));
+//      default:
+//        throw new RuntimeException("Invalid AbstractVector type");
+//    }
   }
 
   /**
@@ -120,48 +135,67 @@ public class UnityVector extends AbstractVector {
    * @param v operand
    * @return a new bit vector
    */
+  @Override
   public AbstractVector xor(AbstractVector v) {
-    switch (v.getType()) {
-      case ONE:
-        return new UnityVector(xorLike(v._blockArray));
-      default:
-        throw new RuntimeException("Invalid AbstractVector type");
-    }
+    return v.xorOp(this);
+//    switch (v.getType()) {
+//      case ONE:
+//        return new UnityVector(exDisjunction(v._blockArray));
+//      case ZERO:
+//        return new ZeroVector(exDisjunctionZero(v._blockArray));
+//      default:
+//        throw new RuntimeException("Invalid AbstractVector type");
+//    }
+  }
+
+  /**
+   * Performs NAND operation and returns a new vector
+   *
+   * @param v operand
+   * @return a new bit vector
+   */
+  @Override
+  public AbstractVector nand(AbstractVector v) {
+    return v.nandOp(this);
+  }
+
+  /**
+   * Performs AND NOT (SUB) operation and returns a new vector
+   *
+   * @param v operand
+   * @return a new bit vector
+   */
+  @Override
+  public AbstractVector sub(AbstractVector v) {
+    return v.subOp(this);
   }
 
   /**
    * Optimizes vector storage, may be slow.
    */
+  @Override
   public AbstractVector optimize() {
     // TODO: Optimize block storage
     return new UnityVector(_blockArray);
   }
 
-  /**
-   * Deserializes into LongStream
-   *
-   * @return stream of sorted bit positions
-   */
-  public LongStream stream() {
+  @Override
+  public IntStream stream() {
     return _blockArray.stream()
-        .flatMapToLong(nb -> {
-          return nb.block.stream().mapToLong(x -> ((long)nb.no << BIT_BLOCK_POWER) + x);
+        .flatMapToInt(nb -> {
+          int offset = nb.no << BIT_BLOCK_POWER;
+          return nb.block.stream().map(x -> offset + x );
         });
   }
 
-  /**
-   * Converts to array of long, limited by the index range (0..Integer.MAX_VALUE)
-   *
-   * @return a sorted array of bit positions
-   */
-  public long[] toArray() {
-    long size = cardinality();
-    if (size > Integer.MAX_VALUE)
-      throw new RuntimeException("Will not fit into an array due to index constraint");
-    return stream().toArray();
+  @Override
+  public IntStream stream(int limit) {
+    return _blockArray.stream()
+        .flatMapToInt(nb -> {
+          int offset = nb.no << BIT_BLOCK_POWER;
+          return nb.block.stream().map(x -> offset + x );
+        }).filter(x -> x < limit);
   }
-
-
 
   @Override
   public String toString() {
@@ -172,9 +206,59 @@ public class UnityVector extends AbstractVector {
       final AtomicLong counter = new AtomicLong();
       sb.append(", blocks: ").append(_blockArray.size());//.append("\n");
 //      _blockMap.forEach((k, v) -> { /*sb.append(k).append(": ").append(v.toString()).append("\n"); */counter.addAndGet(v.size()); });
-//      sb.append("Total block size: ").append(counter.getAsLongArray());
+//      sb.append("Total block size: ").append(counter.getAsIntArray());
     }
     return sb.toString();
+  }
+
+  @Override
+  protected AbstractVector andOp(UnityVector v) {
+    return new UnityVector(intersect(this._blockArray, v._blockArray));
+  }
+
+  @Override
+  protected AbstractVector andOp(ZeroVector v) {
+    return new UnityVector(intersectZero(this._blockArray, v._blockArray));
+  }
+
+  @Override
+  protected AbstractVector orOp(UnityVector v) {
+    return new UnityVector(union(this._blockArray, v._blockArray));
+  }
+
+  @Override
+  protected AbstractVector orOp(ZeroVector v) {
+    return new ZeroVector(unionZero(this._blockArray, v._blockArray));
+  }
+
+  @Override
+  protected AbstractVector xorOp(UnityVector v) {
+    return new UnityVector(exDisjunction(this._blockArray, v._blockArray));
+  }
+
+  @Override
+  protected AbstractVector xorOp(ZeroVector v) {
+    return new ZeroVector(exDisjunctionZero(this._blockArray, v._blockArray));
+  }
+
+  @Override
+  protected AbstractVector nandOp(UnityVector v) {
+    return new ZeroVector(intersect(this._blockArray, v._blockArray));
+  }
+
+  @Override
+  protected AbstractVector nandOp(ZeroVector v) {
+    return new ZeroVector(intersect(this._blockArray, v._blockArray));
+  }
+
+  @Override
+  protected AbstractVector subOp(UnityVector v) {
+    return new UnityVector(intersectZero(this._blockArray, v._blockArray));
+  }
+
+  @Override
+  protected AbstractVector subOp(ZeroVector v) {
+    return new UnityVector(intersect(this._blockArray, v._blockArray));
   }
 
 }

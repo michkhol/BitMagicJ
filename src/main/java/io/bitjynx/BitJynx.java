@@ -1,9 +1,8 @@
 package io.bitjynx;
 
-import java.util.stream.LongStream;
+import java.util.stream.IntStream;
 
-// TODO: Invert the whole vector for SUB operation
-public class BitJynx {
+public final class BitJynx {
   final static int BIT_BLOCK_POWER = AbstractVector.BIT_BLOCK_POWER;
   final static int BITS_PER_BLOCK = AbstractVector.BITS_PER_BLOCK;
 
@@ -14,7 +13,7 @@ public class BitJynx {
    *
    * @param sortedUnique must contain sorted unique elements, otherwise the behavior is undefined.
    */
-  public BitJynx(long[] sortedUnique) {
+  public BitJynx(int[] sortedUnique) {
     _internal = new UnityVector(sortedUnique);
   }
 
@@ -23,8 +22,8 @@ public class BitJynx {
    *
    * @param supplier must provide a sorted unique array of long
    */
-  public BitJynx(LongArraySupplier supplier) {
-    _internal = new UnityVector(supplier.getAsLongArray());
+  public BitJynx(IntArraySupplier supplier) {
+    _internal = new UnityVector(supplier.getAsIntArray());
   }
 
   /**
@@ -47,7 +46,7 @@ public class BitJynx {
    *
    * @return highest bit position
    */
-  public long getMaxBitPosition() {return _internal.getMaxBitPosition(); }
+  public int getMaxBitPosition() {return _internal.getMaxBitPosition(); }
 
   /**
    * Returns the bit value at the specified position
@@ -55,7 +54,15 @@ public class BitJynx {
    * @param idx bit position
    * @return true or false
    */
-  public boolean get(long idx) {return _internal.get(idx); }
+  public boolean get(int idx) {return _internal.get(idx); }
+
+  /**
+   * Performs NOT operation and returns a new vector
+   *
+   * @return a new bit vector
+   */
+  public BitJynx not() { return new BitJynx(_internal.not()); }
+
 
   /**
    * Performs AND operation and returns a new vector
@@ -89,18 +96,28 @@ public class BitJynx {
   }
 
   /**
-   * Deserializes into LongStream
+   * Deserializes into IntStream.
+   * The <code>limit</code> is the maximum desired bit position (exclusive).
+   *
+   * @param limit the highest desired bit position (exclusive)
+   * @return stream of sorted bit positions
+   */
+  public IntStream stream(int limit) { return _internal.stream(limit);  }
+
+  /**
+   * Deserializes the whole vector into IntStream.
+   * Will throw if the vector is inverted.
    *
    * @return stream of sorted bit positions
    */
-  public LongStream stream() { return _internal.stream();  }
+  public IntStream stream() { return _internal.stream();  }
 
   /**
-   * Converts to array of long, limited by the index range (0..Integer.MAX_VALUE)
+   * Converts to array of int
    *
    * @return a sorted array of bit positions
    */
-  public long[] toArray() { return _internal.toArray(); }
+  public int[] toArray() { return _internal.toArray(); }
 
 
 
