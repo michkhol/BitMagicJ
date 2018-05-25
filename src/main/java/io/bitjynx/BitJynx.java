@@ -3,10 +3,24 @@ package io.bitjynx;
 import java.util.stream.IntStream;
 
 public final class BitJynx {
-  final static int BIT_BLOCK_POWER = AbstractVector.BIT_BLOCK_POWER;
-  final static int BITS_PER_BLOCK = AbstractVector.BITS_PER_BLOCK;
+  final static int BIT_BLOCK_POWER = AbstractPosVector.BIT_BLOCK_POWER;
+  final static int BITS_PER_BLOCK = AbstractPosVector.BITS_PER_BLOCK;
 
-  private final AbstractVector _internal;
+  public static BitJynx empty = new BitJynx(new UnityPosVector());
+
+  private final IVector _internal;
+
+  /**
+   * Creates a new bit vector from array of bit positions
+   *
+   * @param sortedUnique must contain sorted unique elements, otherwise the behavior is undefined.
+   * @param size only the first <code>size</code> positions will be read.
+   */
+  public BitJynx(int[] sortedUnique, int size) {
+    if (size > sortedUnique.length)
+      throw new IllegalArgumentException("Parameter 'size' must be less than or equal the supplied array length.");
+    _internal = new UnityPosVector(sortedUnique, size);
+  }
 
   /**
    * Creates a new bit vector from array of bit positions
@@ -14,7 +28,7 @@ public final class BitJynx {
    * @param sortedUnique must contain sorted unique elements, otherwise the behavior is undefined.
    */
   public BitJynx(int[] sortedUnique) {
-    _internal = new UnityVector(sortedUnique);
+    _internal = new UnityPosVector(sortedUnique, sortedUnique.length);
   }
 
   /**
@@ -23,14 +37,15 @@ public final class BitJynx {
    * @param supplier must provide a sorted unique array of long
    */
   public BitJynx(IntArraySupplier supplier) {
-    _internal = new UnityVector(supplier.getAsIntArray());
+    int[] a = supplier.getAsIntArray();
+    _internal = new UnityPosVector(a, a.length);
   }
 
   /**
    * For internal use only!!!
    * @param v
    */
-  private BitJynx(AbstractVector v) {
+  private BitJynx(IVector v) {
     this._internal = v;
   }
 
@@ -119,9 +134,14 @@ public final class BitJynx {
    */
   public int[] toArray() { return _internal.toArray(); }
 
-
-
   @Override
-  public String toString() { return _internal.toString(); }
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    sb.append("Cardinality: ").append(cardinality());
+    sb.append(", highest bit: ").append(getMaxBitPosition());
+    sb.append(", blocks: ").append(_internal.blockArraySize());
+    sb.append(", average cardinality per block: ").append(_internal.avgCardinalityPerBlock());
+    return sb.toString();
+  }
 
 }

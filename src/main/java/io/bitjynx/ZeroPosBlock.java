@@ -34,7 +34,7 @@ class ZeroPosBlock extends AbstractBitPosBlock {
         if (Short.toUnsignedInt(_positions[i]) != lastBitPos)
           return lastBitPos;
         else
-          lastBitPos--;
+          --lastBitPos;
       }
       return lastBitPos;
     }
@@ -185,10 +185,10 @@ class ZeroPosBlock extends AbstractBitPosBlock {
       if (ones[i] < this._positions[j])
         temp[counter++] = ones[i++];
       else if (this._positions[j] < ones[i])
-        j++;
+        ++j;
       else {
-        i++;
-        j++;
+        ++i;
+        ++j;
       }
     }
     // Add remainder
@@ -212,12 +212,12 @@ class ZeroPosBlock extends AbstractBitPosBlock {
 
     while (i < ones.length && j < this._positions.length) {
       if (ones[i] < this._positions[j])
-        i++;
+        ++i;
       else if (this._positions[j] < ones[i])
         temp[counter++] = this._positions[j++];
       else {
-        i++;
-        j++;
+        ++i;
+        ++j;
       }
     }
     // Add remainder
@@ -246,8 +246,8 @@ class ZeroPosBlock extends AbstractBitPosBlock {
       else if (this._positions[j] < ones[i])
         temp[counter++] = this._positions[j++];
       else {
-        i++;
-        j++;
+        ++i;
+        ++j;
       }
     }
     // Add remainders

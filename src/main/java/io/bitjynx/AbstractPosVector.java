@@ -2,10 +2,8 @@ package io.bitjynx;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.IntStream;
-import java.util.stream.LongStream;
 
-public abstract class AbstractVector {
+abstract class AbstractPosVector implements IVector {
   final static int BIT_BLOCK_POWER = 13; // 8K blocks
   final static int BITS_PER_BLOCK = 1 << BIT_BLOCK_POWER;
 
@@ -18,119 +16,39 @@ public abstract class AbstractVector {
    * Creates a new bit vector from array of bit positions
    *
    * @param sortedUnique must contain sorted unique elements, otherwise the behavior is undefined.
+   * @param size only the first <code>size</code> positions will be read, must be less than
+   *             or equal the <code>sortedUnique</code> length
    */
-  public AbstractVector(int[] sortedUnique/*, Type t*/) {
+  AbstractPosVector(int[] sortedUnique, int size/*, Type t*/) {
 //    this._type = t;
     this._blockArray = new ArrayList<>();
-    storeData(sortedUnique);
+    storeData(sortedUnique, size);
+  }
+
+  /**
+   * Creates a new empty bit vector
+   *
+   */
+  AbstractPosVector() {
+    this._blockArray = new ArrayList<>();
   }
 
   /**
    * For internal use only!!!
-   * @param blocks
+   * @param blocks block array
    */
-  protected AbstractVector(ArrayList<NumberedBlock> blocks/*, Type t*/) {
+  protected AbstractPosVector(ArrayList<NumberedBlock> blocks/*, Type t*/) {
 //    this._type = t;
-    this._blockArray = new ArrayList<>(blocks);
+    this._blockArray = blocks;
   }
 
-
-//  Type getType() { return _type; }
-
-  /**
-   * Calculates cardinality
-   *
-   * @return number of bits in the vector
-   */
-  public abstract int cardinality();
-
-  /**
-   * Calculates the position of the highest bit
-   *
-   * @return highest bit position
-   */
-  public abstract int getMaxBitPosition();
-
-  /**
-   * Returns the bit value at the specified position
-   *
-   * @param idx bit position
-   * @return true or false
-   */
-  public abstract boolean get(int idx);
-
-  /**
-   * Performs NOT operation and returns a new vector
-   *
-   * @return a new bit vector
-   */
-  public abstract AbstractVector not();
-
-  /**
-   * Performs AND operation and returns a new vector
-   *
-   * @param v operand
-   * @return a new bit vector
-   */
-  public abstract AbstractVector and(AbstractVector v);
-
-  /**
-   * Performs OR operation and returns a new vector
-   *
-   * @param v operand
-   * @return a new bit vector
-   */
-  public abstract AbstractVector or(AbstractVector v);
-
-  /**
-   * Performs XOR operation and returns a new vector
-   *
-   * @param v operand
-   * @return a new bit vector
-   */
-  public abstract AbstractVector xor(AbstractVector v);
-
-  /**
-   * Performs NAND operation and returns a new vector
-   *
-   * @param v operand
-   * @return a new bit vector
-   */
-  public abstract AbstractVector nand(AbstractVector v);
-
-  /**
-   * Performs AND NOT operation and returns a new vector
-   *
-   * @param v operand
-   * @return a new bit vector
-   */
-  public abstract AbstractVector sub(AbstractVector v);
-
-  /**
-   * Optimizes vector storage, may be slow.
-   */
-  public abstract AbstractVector optimize();
-
-  /**
-   * Deserializes the first <code>limit</code> bits into IntStream
-   *
-   * @param limit number of bits to stream
-   * @return stream of sorted bit positions
-   */
-  public abstract IntStream stream(int limit);
-
-  /**
-   * Deserializes the whole vector into IntStream
-   *
-   * @return stream of sorted bit positions
-   */
-  public abstract IntStream stream();
 
   /**
    * Converts to array of int
    *
    * @return a sorted array of bit positions
    */
+  @Override
   public int[] toArray() {
     return stream().toArray();
   }
@@ -141,8 +59,28 @@ public abstract class AbstractVector {
    * @param limit number of bits to convert
    * @return a sorted array of bit positions
    */
+  @Override
   public int[] toArray(int limit) {
     return stream(limit).toArray();
+  }
+
+  /**
+   * For internal use only!!!
+   *
+   * @return
+   */
+  public int blockArraySize() { return _blockArray == null ? 0 : _blockArray.size(); }
+
+  /**
+   * For internal use only!!!
+   *
+   * @return
+   */
+  public double avgCardinalityPerBlock() {
+    if (_blockArray != null )
+      return _blockArray.stream().mapToDouble(x -> x.block.cardinality()).average().orElse(0.);
+    else
+      return 0;
   }
 
   //////////////////////////////////////////// Internal implementation /////////////////////////////////////////////////
@@ -162,15 +100,15 @@ public abstract class AbstractVector {
       NumberedBlock left = ba1.get(i);
       NumberedBlock right = ba2.get(j);
       if (left.no < right.no)
-        i++;
+        ++i;
       else if (right.no < left.no)
-        j++;
+        ++j;
       else {
         IBlock b = left.block.and(right.block); // Returns BitPosBlock regardless of 'right' argument type
         if (b != EmptyBlock.instance)
           resultArray.add(new NumberedBlock(left.no, b));
-        i++;
-        j++;
+        ++i;
+        ++j;
       }
     }
     return resultArray;
@@ -192,16 +130,16 @@ public abstract class AbstractVector {
       NumberedBlock right = bz.get(j);
       if (left.no < right.no) {
         resultArray.add(left);
-        i++;
+        ++i;
       }
       else if (right.no < left.no)
-        j++;
+        ++j;
       else {
         IBlock b = left.block.and(right.block); // Returns BitPosBlock regardless of 'right' argument type
         if (b != EmptyBlock.instance)
           resultArray.add(new NumberedBlock(left.no, b));
-        i++;
-        j++;
+        ++i;
+        ++j;
       }
     }
     return resultArray;
@@ -224,16 +162,16 @@ public abstract class AbstractVector {
       NumberedBlock right = ba2.get(j);
       if (left.no < right.no) {
         resultArray.add(left);
-        i++;
+        ++i;
       }
       else if (right.no < left.no) {
         resultArray.add(right);
-        j++;
+        ++j;
       }
       else {
         resultArray.add(new NumberedBlock(left.no, left.block.or(right.block)));
-        i++;
-        j++;
+        ++i;
+        ++j;
       }
     }
     // Add remaining blocks
@@ -263,17 +201,17 @@ public abstract class AbstractVector {
       NumberedBlock left = ba.get(i);
       NumberedBlock right = bz.get(j);
       if (left.no < right.no) {
-        i++;
+        ++i;
       }
       else if (right.no < left.no) {
-        j++;
+        ++j;
       }
       else {
         IBlock b = left.block.or(right.block);
         if (b != UnityBlock.instance)
           resultArray.add(new NumberedBlock(left.no, b));
-        i++;
-        j++;
+        ++i;
+        ++j;
       }
     }
     return resultArray;
@@ -300,14 +238,14 @@ public abstract class AbstractVector {
       }
       else if (right.no < left.no) {
         resultArray.add(right);
-        j++;
+        ++j;
       }
       else {
         IBlock b = left.block.xor(right.block);
         if (b != EmptyBlock.instance)
           resultArray.add(new NumberedBlock(left.no, b));
-        i++;
-        j++;
+        ++i;
+        ++j;
       }
     }
     // Add remaining blocks
@@ -336,19 +274,18 @@ public abstract class AbstractVector {
       NumberedBlock left = ba.get(i);
       NumberedBlock right = bz.get(j);
       if (left.no < right.no) {
-//        resultArray.add(left);
-        i++;
+        ++i;
       }
       else if (right.no < left.no) {
         resultArray.add(right);
-        j++;
+        ++j;
       }
       else {
         IBlock b = left.block.xor(right.block);
         if (b != UnityBlock.instance)
           resultArray.add(new NumberedBlock(left.no, b));
-        i++;
-        j++;
+        ++i;
+        ++j;
       }
     }
     // Add remaining blocks
@@ -361,14 +298,15 @@ public abstract class AbstractVector {
 
   /**
    *
-   * @param bits - bit position array, must be sorted!!!
+   * @param positions - bit position array, must be sorted!!!
    */
-  protected void storeData(int[] bits) {
+  protected void storeData(int[] positions, int size) {
     short[] tempBlock = new short[BITS_PER_BLOCK];
     int blockStart = 0;
     int bitIdx = 0;
-    for(long bitNo: bits) {
-      while(bitNo >= blockStart + BITS_PER_BLOCK) {
+    for(int i = 0; i < size; ++i) {
+      int globalPos = positions[i];
+      while(globalPos >= blockStart + BITS_PER_BLOCK) {
         if (bitIdx > 0) {
           // Store previous block first
           short[] block = new short[bitIdx];
@@ -379,7 +317,7 @@ public abstract class AbstractVector {
         }
         blockStart += BITS_PER_BLOCK;
       }
-      short pos = (short)(bitNo - blockStart); // the cast effectively makes 'unsigned short'
+      short pos = (short)(globalPos - blockStart); // the cast effectively makes 'unsigned short'
       tempBlock[bitIdx++] = pos;
     }
     if (bitIdx > 0) {
@@ -413,24 +351,24 @@ public abstract class AbstractVector {
   }
 
 //  // Using polymorphism to tell one type from another
-  protected abstract AbstractVector andOp(UnityVector v);
+  protected abstract IVector andOp(UnityPosVector v);
 
-  protected abstract AbstractVector andOp(ZeroVector v);
+  protected abstract IVector andOp(ZeroPosVector v);
 
-  protected abstract AbstractVector orOp(UnityVector v);
+  protected abstract IVector orOp(UnityPosVector v);
 
-  protected abstract AbstractVector orOp(ZeroVector v);
+  protected abstract IVector orOp(ZeroPosVector v);
 
-  protected abstract AbstractVector xorOp(UnityVector v);
+  protected abstract IVector xorOp(UnityPosVector v);
 
-  protected abstract AbstractVector xorOp(ZeroVector v);
+  protected abstract IVector xorOp(ZeroPosVector v);
 
-  protected abstract AbstractVector nandOp(UnityVector v);
+  protected abstract IVector nandOp(UnityPosVector v);
 
-  protected abstract AbstractVector nandOp(ZeroVector v);
+  protected abstract IVector nandOp(ZeroPosVector v);
 
-  protected abstract AbstractVector subOp(UnityVector v);
+  protected abstract IVector subOp(UnityPosVector v);
 
-  protected abstract AbstractVector subOp(ZeroVector v);
+  protected abstract IVector subOp(ZeroPosVector v);
 }
 

@@ -1,11 +1,16 @@
 package io.bitjynx
 
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Paths}
 import java.util
 import java.util.stream.{IntStream, LongStream}
 
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 import scala.util.Random
+import scala.collection.JavaConverters._
+import scala.collection.SortedMap
+import scala.util.control.NonFatal
 
 object BitJynxJavaTest {
   def bitPosBlock(v: Short*): BitPosBlock = {
@@ -40,6 +45,9 @@ object BitJynxJavaTest {
     IntStream.of(bits: _*).distinct().toArray
   }
 
+  def bitMapBlock(v: Int*): BitMapBlock = {
+    new BitMapBlock(v.toArray)
+  }
 }
 
 class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
@@ -51,6 +59,13 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
 //    val br = new BufferedReader(new InputStreamReader(System.in))
 //    System.out.print("Enter:")
 //    val s = br.readLine
+  }
+
+  test("BitMapBlock - serialization") {
+    val a = Array[Int](0, 1, 24, 35, 540, 3456, 8000)
+    val b = bitMapBlock(a:_*)
+    val ser = b.stream().toArray
+    assert(a.sameElements(ser))
   }
 
   test("BitPosBlock - and") {
@@ -181,7 +196,7 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
 
   test("BitJynx serialize") {
     val start = System.currentTimeMillis()
-    val BitsNo = 10000000
+    val BitsNo = 1000000
     val RandLimit = 100000000
     val bits = createRandom(BitsNo, RandLimit)
     val bj = new BitJynx(bits)
@@ -269,6 +284,79 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
     println(bj3)
     assert(bj3.cardinality() == 9)
 
+  }
+
+  test("BitJynx SNP") {
+    val r = """^.+\s+(\d+)\s+rs(\d+)""".r
+    val p = Paths.get("chr1.vcf")
+    var counter = 0
+    try {
+      val rsMap = Files.lines(p, StandardCharsets.ISO_8859_1).iterator().asScala.flatMap { s =>
+        counter = counter + 1
+        if (counter % 1000000 == 0) println(s"Lines read: $counter")
+        for (m <- r.findFirstMatchIn(s)) yield (m.group(1).toInt, m.group(2).toInt)
+      }.toMap
+      val sortedRsMap = SortedMap[Int, Int]() ++ rsMap
+      println("RS map size: " + sortedRsMap.size)
+      val posArray = sortedRsMap.keys.toArray
+      val ts = System.currentTimeMillis()
+      val b0 = new BitJynx(posArray)
+      val bm = new Array[BitJynx](32)
+      val buf = new Array[Int](sortedRsMap.size)
+      for(i <- 0 until 32) {
+        val mask = 1 << i
+        var idx = 0
+        sortedRsMap.foreach { case(k, v) =>
+          if ((v & mask) != 0) {
+            buf(idx) = k
+            idx = idx + 1
+          }
+        }
+        bm(i) = if (idx == 0) BitJynx.empty else new BitJynx(buf, idx)
+      }
+      val ts2 = System.currentTimeMillis()
+      println(s"Create time: ${ts2 - ts} ms")
+      println("Positions vector: " + b0.toString)
+      printBm(bm)
+
+      // And with an rs
+      val rs = 1003651171
+      val bmAnd = new Array[BitJynx](32)
+      for(i <- 0 until 32) {
+        val mask = 1 << i
+        if ((rs & mask) != 0)
+          bmAnd(i) = b0.and(bm(i))
+        else
+          bmAnd(i) = BitJynx.empty
+      }
+      val ts3 = System.currentTimeMillis()
+      println
+      println(s"And time: ${ts3 - ts2} ms")
+      printBm(bmAnd)
+
+      val bmXor = new Array[BitJynx](32)
+      for(i <- 0 until 32) {
+        val mask = 1 << i
+        if ((rs & mask) != 0)
+          bmXor(i) = b0.xor(bm(i))
+        else
+          bmXor(i) = bm(i)
+      }
+      val ts4 = System.currentTimeMillis()
+      println
+      println(s"Xor time: ${ts4 - ts3} ms")
+      printBm(bmXor)
+    }
+    catch {
+      case NonFatal(e) =>
+        println(s"Error at $counter")
+        e.printStackTrace()
+    }
+  }
+
+  private def printBm(bm: Array[BitJynx]): Unit = {
+    for (i <- bm.indices)
+      println(s"Bit $i: " + bm(i).toString)
   }
 
 }

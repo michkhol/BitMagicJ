@@ -149,12 +149,4 @@ class BitPosBlock extends AbstractBitPosBlock {
       return this.getType() == b.getType() && Arrays.equals(this._positions, b._positions);
     }
   }
-
-
-  //////////////////////////////////////////////// Internal implementation ///////////////////////////////////////
-
-//  private IBlock andOp(UnityBlock b) { return new BitPosBlock(_positions); }
-//  private IBlock andOp(EmptyBlock b) { return EmptyBlock.instance; }
-//  private IBlock andOp(BitPosBlock b) { return newBitPosBlock(intersect(this._positions, b._positions)); }
-//  private IBlock andOp(ZeroPosBlock b) { return newBitPosBlock(b.andOnes(this._positions)); }
 }

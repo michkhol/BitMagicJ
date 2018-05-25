@@ -95,13 +95,13 @@ abstract class AbstractBitPosBlock implements IBlock {
 
     while (i < positions1.length && j < positions2.length) {
       if (positions1[i] < positions2[j])
-        i++;
+        ++i;
       else if (positions2[j] < positions1[i])
-        j++;
+        ++j;
       else {
         temp[counter++] = positions1[i];
-        i++;
-        j++;
+        ++i;
+        ++j;
       }
     }
     short[] result = new short[counter];
@@ -120,7 +120,7 @@ abstract class AbstractBitPosBlock implements IBlock {
         temp[counter++] = positions2[j++];
       } else {
         temp[counter++] = positions1[i++];
-        j++;
+        ++j;
       }
     }
     // Add remaining elements
@@ -151,8 +151,8 @@ abstract class AbstractBitPosBlock implements IBlock {
       } else if (positions2[j] < positions1[i]) {
         temp[counter++] = positions2[j++];
       } else {
-        i++;
-        j++;
+        ++i;
+        ++j;
       }
     }
     // Add remaining elements
