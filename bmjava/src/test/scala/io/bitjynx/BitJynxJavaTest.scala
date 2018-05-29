@@ -299,7 +299,9 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
       val sortedRsMap = SortedMap[Int, Int]() ++ rsMap
       println("RS map size: " + sortedRsMap.size)
       val posArray = sortedRsMap.keys.toArray
+
       val ts = System.currentTimeMillis()
+//      val ibm = new IntVector(sortedRsMap.toMap.asJava)
       val b0 = new BitJynx(posArray)
       val bm = new Array[BitJynx](32)
       val buf = new Array[Int](sortedRsMap.size)
@@ -321,31 +323,50 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
 
       // And with an rs
       val rs = 1003651171
-      val bmAnd = new Array[BitJynx](32)
-      for(i <- 0 until 32) {
-        val mask = 1 << i
-        if ((rs & mask) != 0)
-          bmAnd(i) = b0.and(bm(i))
-        else
-          bmAnd(i) = BitJynx.empty
+      // Warmup
+      println("And warmup")
+      for(i <- 0 until 5) {
+        val bmAnd = new Array[BitJynx](32)
+        for (i <- 0 until 32) {
+          val mask = 1 << i
+          if ((rs & mask) != 0)
+            bmAnd(i) = b0.and(bm(i))
+          else
+            bmAnd(i) = BitJynx.empty
+        }
       }
+
+      // Measure
+      println("And measure start")
+      val tsw = System.currentTimeMillis()
+      for(i <- 0 until 10) {
+        val bmAnd = new Array[BitJynx](32)
+        for (i <- 0 until 32) {
+          val mask = 1 << i
+          if ((rs & mask) != 0)
+            bmAnd(i) = b0.and(bm(i))
+          else
+            bmAnd(i) = BitJynx.empty
+        }
+      }
+
       val ts3 = System.currentTimeMillis()
       println
-      println(s"And time: ${ts3 - ts2} ms")
-      printBm(bmAnd)
+      println(s"And time: ${(ts3 - tsw) / 10} ms")
+//      printBm(bmAnd)
 
-      val bmXor = new Array[BitJynx](32)
-      for(i <- 0 until 32) {
-        val mask = 1 << i
-        if ((rs & mask) != 0)
-          bmXor(i) = b0.xor(bm(i))
-        else
-          bmXor(i) = bm(i)
-      }
-      val ts4 = System.currentTimeMillis()
-      println
-      println(s"Xor time: ${ts4 - ts3} ms")
-      printBm(bmXor)
+//      val bmXor = new Array[BitJynx](32)
+//      for(i <- 0 until 32) {
+//        val mask = 1 << i
+//        if ((rs & mask) != 0)
+//          bmXor(i) = b0.xor(bm(i))
+//        else
+//          bmXor(i) = bm(i)
+//      }
+//      val ts4 = System.currentTimeMillis()
+//      println
+//      println(s"Xor time: ${ts4 - ts3} ms")
+//      printBm(bmXor)
     }
     catch {
       case NonFatal(e) =>

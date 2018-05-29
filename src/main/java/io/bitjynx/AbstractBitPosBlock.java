@@ -89,7 +89,7 @@ abstract class AbstractBitPosBlock implements IBlock {
     }
   }
 
-  protected static short[] andLike(short[] positions1, short[] positions2) {
+  protected static short[] andLike2(short[] positions1, short[] positions2) {
     int i = 0, j = 0, counter = 0;
     short[] temp = new short[Integer.min(positions1.length, positions2.length)];
 
@@ -103,6 +103,72 @@ abstract class AbstractBitPosBlock implements IBlock {
         ++i;
         ++j;
       }
+    }
+    short[] result = new short[counter];
+    System.arraycopy(temp, 0, result, 0, counter);
+    return result;
+  }
+
+  protected static short[] andLike(short[] positions1, short[] positions2) {
+    int i = 0, j = 0, counter = 0;
+    short[] temp = new short[Integer.min(positions1.length, positions2.length)];
+
+    int dif = 0;
+    while (i < positions1.length && j < positions2.length) {
+      dif = positions1[i] - positions2[j];
+      temp[counter] = positions1[i];
+      i = i + (dif <= 0 ? 1 : 0); // if (positions1[i] <= positions2[j])
+      j = j + (dif >= 0 ? 1 : 0); // if (positions1[i] >= positions2[j])
+      counter = counter + (dif == 0 ? 1 : 0);
+
+//      if (i >= positions1.length || j >= positions2.length) break;
+//      dif = positions1[i] - positions2[j];
+//      temp[counter] = positions1[i];
+//      i = i + (dif <= 0 ? 1 : 0); // if (positions1[i] <= positions2[j])
+//      j = j + (dif >= 0 ? 1 : 0); // if (positions1[i] >= positions2[j])
+//      counter = counter + (dif == 0 ? 1 : 0);
+//
+//      if (i >= positions1.length || j >= positions2.length) break;
+//      dif = positions1[i] - positions2[j];
+//      temp[counter] = positions1[i];
+//      i = i + (dif <= 0 ? 1 : 0); // if (positions1[i] <= positions2[j])
+//      j = j + (dif >= 0 ? 1 : 0); // if (positions1[i] >= positions2[j])
+//      counter = counter + (dif == 0 ? 1 : 0);
+//
+//      if (i >= positions1.length || j >= positions2.length) break;
+//      dif = positions1[i] - positions2[j];
+//      temp[counter] = positions1[i];
+//      i = i + (dif <= 0 ? 1 : 0); // if (positions1[i] <= positions2[j])
+//      j = j + (dif >= 0 ? 1 : 0); // if (positions1[i] >= positions2[j])
+//      counter = counter + (dif == 0 ? 1 : 0);
+//
+//      if (i >= positions1.length || j >= positions2.length) break;
+//      dif = positions1[i] - positions2[j];
+//      temp[counter] = positions1[i];
+//      i = i + (dif <= 0 ? 1 : 0); // if (positions1[i] <= positions2[j])
+//      j = j + (dif >= 0 ? 1 : 0); // if (positions1[i] >= positions2[j])
+//      counter = counter + (dif == 0 ? 1 : 0);
+//
+//      if (i >= positions1.length || j >= positions2.length) break;
+//      dif = positions1[i] - positions2[j];
+//      temp[counter] = positions1[i];
+//      i = i + (dif <= 0 ? 1 : 0); // if (positions1[i] <= positions2[j])
+//      j = j + (dif >= 0 ? 1 : 0); // if (positions1[i] >= positions2[j])
+//      counter = counter + (dif == 0 ? 1 : 0);
+//
+//      if (i >= positions1.length || j >= positions2.length) break;
+//      dif = positions1[i] - positions2[j];
+//      temp[counter] = positions1[i];
+//      i = i + (dif <= 0 ? 1 : 0); // if (positions1[i] <= positions2[j])
+//      j = j + (dif >= 0 ? 1 : 0); // if (positions1[i] >= positions2[j])
+//      counter = counter + (dif == 0 ? 1 : 0);
+//
+//      if (i >= positions1.length || j >= positions2.length) break;
+//      dif = positions1[i] - positions2[j];
+//      temp[counter] = positions1[i];
+//      i = i + (dif <= 0 ? 1 : 0); // if (positions1[i] <= positions2[j])
+//      j = j + (dif >= 0 ? 1 : 0); // if (positions1[i] >= positions2[j])
+//      counter = counter + (dif == 0 ? 1 : 0);
     }
     short[] result = new short[counter];
     System.arraycopy(temp, 0, result, 0, counter);

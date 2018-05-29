@@ -76,8 +76,11 @@ class BitMapBlock implements IBlock {
       case MAP_BLOCK: {
         BitMapBlock b = (BitMapBlock) v2;
         long[] map = new long[_map.length];
-        for(int i = 0; i < _map.length; ++i) {
+        for(int i = 0; i < _map.length; i = i + 1) {
           map[i] = _map[i] & b._map[i];
+//          map[i+1] = _map[i+1] & b._map[i+1];
+//          map[i+2] = _map[i+2] & b._map[i+2];
+//          map[i+3] = _map[i+3] & b._map[i+3];
         }
         return new BitMapBlock(map);
       }

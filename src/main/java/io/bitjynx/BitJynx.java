@@ -6,9 +6,11 @@ public final class BitJynx {
   final static int BIT_BLOCK_POWER = AbstractPosVector.BIT_BLOCK_POWER;
   final static int BITS_PER_BLOCK = AbstractPosVector.BITS_PER_BLOCK;
 
-  public static BitJynx empty = new BitJynx(new UnityPosVector());
+  private static final IVectorFactory factory = (int[] a, int size) -> new UnityPosVector(a, size);
 
   private final IVector _internal;
+
+  public static BitJynx empty = new BitJynx(new int[0], 0);
 
   /**
    * Creates a new bit vector from array of bit positions
@@ -19,7 +21,7 @@ public final class BitJynx {
   public BitJynx(int[] sortedUnique, int size) {
     if (size > sortedUnique.length)
       throw new IllegalArgumentException("Parameter 'size' must be less than or equal the supplied array length.");
-    _internal = new UnityPosVector(sortedUnique, size);
+    _internal = factory.getNewVector(sortedUnique, size);
   }
 
   /**
@@ -28,7 +30,7 @@ public final class BitJynx {
    * @param sortedUnique must contain sorted unique elements, otherwise the behavior is undefined.
    */
   public BitJynx(int[] sortedUnique) {
-    _internal = new UnityPosVector(sortedUnique, sortedUnique.length);
+    _internal = factory.getNewVector(sortedUnique, sortedUnique.length);
   }
 
   /**
@@ -38,7 +40,7 @@ public final class BitJynx {
    */
   public BitJynx(IntArraySupplier supplier) {
     int[] a = supplier.getAsIntArray();
-    _internal = new UnityPosVector(a, a.length);
+    _internal = factory.getNewVector(a, a.length);
   }
 
   /**
