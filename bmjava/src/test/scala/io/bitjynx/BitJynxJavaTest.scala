@@ -3,7 +3,7 @@ package io.bitjynx
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 import java.util
-import java.util.stream.{IntStream, LongStream}
+import java.util.stream.{IntStream, LongStream, StreamSupport}
 
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
@@ -291,17 +291,17 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
     val p = Paths.get("chr1.vcf")
     var counter = 0
     try {
-      val rsMap = Files.lines(p, StandardCharsets.ISO_8859_1).iterator().asScala.flatMap { s =>
+      var rsMap = Files.lines(p, StandardCharsets.ISO_8859_1).iterator().asScala.take(5000000).flatMap { s =>
         counter = counter + 1
         if (counter % 1000000 == 0) println(s"Lines read: $counter")
         for (m <- r.findFirstMatchIn(s)) yield (m.group(1).toInt, m.group(2).toInt)
       }.toMap
-      val sortedRsMap = SortedMap[Int, Int]() ++ rsMap
+      var sortedRsMap = SortedMap[Int, Int]() ++ rsMap
+      rsMap = null // gc away
       println("RS map size: " + sortedRsMap.size)
       val posArray = sortedRsMap.keys.toArray
 
       val ts = System.currentTimeMillis()
-//      val ibm = new IntVector(sortedRsMap.toMap.asJava)
       val b0 = new BitJynx(posArray)
       val bm = new Array[BitJynx](32)
       val buf = new Array[Int](sortedRsMap.size)
@@ -319,41 +319,43 @@ class BitJynxJavaTest extends FunSuite with BeforeAndAfterAll {
       val ts2 = System.currentTimeMillis()
       println(s"Create time: ${ts2 - ts} ms")
       println("Positions vector: " + b0.toString)
-      printBm(bm)
+//      printBm(bm)
+      sortedRsMap = null // gc away
 
       // And with an rs
       val rs = 1003651171
       // Warmup
-      println("And warmup")
-      for(i <- 0 until 5) {
-        val bmAnd = new Array[BitJynx](32)
-        for (i <- 0 until 32) {
-          val mask = 1 << i
-          if ((rs & mask) != 0)
-            bmAnd(i) = b0.and(bm(i))
-          else
-            bmAnd(i) = BitJynx.empty
-        }
-      }
-
+//      println("And warmup")
+//      for(i <- 0 until 5) {
+//        val bmAnd = new Array[BitJynx](32)
+//        for (i <- 0 until 32) {
+//          val mask = 1 << i
+//          if ((rs & mask) != 0)
+//            bmAnd(i) = b0.and(bm(i))
+//          else
+//            bmAnd(i) = BitJynx.empty
+//        }
+//      }
+      println("Cleaning up")
+      System.gc()
       // Measure
       println("And measure start")
       val tsw = System.currentTimeMillis()
-      for(i <- 0 until 10) {
-        val bmAnd = new Array[BitJynx](32)
-        for (i <- 0 until 32) {
-          val mask = 1 << i
+      val reps = 10
+      val bmAnd = Array.ofDim[BitJynx](reps, 32)
+      for(i <- 0 until reps) {
+        for (j <- 0 until 32) {
+          val mask = 1 << j
           if ((rs & mask) != 0)
-            bmAnd(i) = b0.and(bm(i))
+            bmAnd(i)(j) = b0.and(bm(j))
           else
-            bmAnd(i) = BitJynx.empty
+            bmAnd(i)(j) = BitJynx.empty
         }
       }
 
       val ts3 = System.currentTimeMillis()
-      println
-      println(s"And time: ${(ts3 - tsw) / 10} ms")
-//      printBm(bmAnd)
+      println(s"And time: ${(ts3 - tsw) / reps} ms")
+//      printBm(bmAnd(0))
 
 //      val bmXor = new Array[BitJynx](32)
 //      for(i <- 0 until 32) {

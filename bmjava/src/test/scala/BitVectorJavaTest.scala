@@ -1,4 +1,7 @@
 
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Paths}
+
 import io.bitmagic.core.Strategy
 import io.bitmagic.core.{OptMode, Strategy}
 import io.bitmagic.java.BitVector
@@ -6,6 +9,8 @@ import org.scalactic.source.Position
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll, FunSuite}
 
 import scala.collection.JavaConverters._
+import scala.collection.SortedMap
+import scala.util.control.NonFatal
 
 class BitVectorJavaTest extends FunSuite with BeforeAndAfterAll {
 
@@ -98,4 +103,71 @@ class BitVectorJavaTest extends FunSuite with BeforeAndAfterAll {
     assert(bv.count == bv2.count)
   }
 
+  test("BitVector SNP") {
+    val r = """^.+\s+(\d+)\s+rs(\d+)""".r
+    val p = Paths.get("chr1.vcf")
+    var counter = 0
+    try {
+      var rsMap = Files.lines(p, StandardCharsets.ISO_8859_1).iterator().asScala.take(5000000).flatMap { s =>
+        counter = counter + 1
+        if (counter % 1000000 == 0) println(s"Lines read: $counter")
+        for (m <- r.findFirstMatchIn(s)) yield (m.group(1).toInt, m.group(2).toInt)
+      }.toMap
+      var sortedRsMap: SortedMap[Int, Int] = SortedMap[Int, Int]() ++ rsMap
+      rsMap = null // gc away
+      println("RS map size: " + sortedRsMap.size)
+      val posArray = sortedRsMap.keys.toArray
+
+      val ts = System.currentTimeMillis()
+      //      val ibm = new IntVector(sortedRsMap.toMap.asJava)
+      val b0 = new BitVector(posArray:_*)
+      val bm = new Array[BitVector](32)
+      val buf = new Array[Int](sortedRsMap.size)
+      for(i <- 0 until 32) {
+        val mask = 1 << i
+        var idx = 0
+        sortedRsMap.foreach { case(k, v) =>
+          if ((v & mask) != 0) {
+            buf(idx) = k
+            idx = idx + 1
+          }
+        }
+        bm(i) = if (idx == 0) BitVector.empty else new BitVector(buf.take(idx):_*)
+      }
+      val ts2 = System.currentTimeMillis()
+      println(s"Create time: ${ts2 - ts} ms")
+      sortedRsMap = null // gc away
+
+      // And with an rs
+      val rs = 1003651171
+      println("Cleaning up")
+      System.gc()
+      // Measure
+      println("And measure start")
+      val tsw = System.currentTimeMillis()
+      val reps = 10
+      val bmAnd = Array.ofDim[BitVector](reps, 32)
+      for(i <- 0 until reps) {
+        for (j <- 0 until 32) {
+          val mask = 1 << j
+          if ((rs & mask) != 0) {
+            val cp = b0.copy
+            cp.and(bm(j))
+            bmAnd(i)(j) = cp
+          }
+          else
+            bmAnd(i)(j) = BitVector.empty
+        }
+      }
+
+      val ts3 = System.currentTimeMillis()
+      println(s"And time: ${(ts3 - tsw) / reps} ms")
+
+    }
+    catch {
+      case NonFatal(e) =>
+        println(s"Error at $counter")
+        e.printStackTrace()
+    }
+  }
 }

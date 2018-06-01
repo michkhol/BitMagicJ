@@ -1,8 +1,10 @@
 package io.bitjynx;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static io.bitjynx.BitMapBlock.CELL_POWER;
 
@@ -33,7 +35,7 @@ final class BitMapVector implements IVector {
 
   /**
    * For internal use only!!!
-   * @param blocks
+   * @param blocks block array
    */
   BitMapVector(ArrayList<NumberedBlock> blocks) {
     _blockArray = blocks;
@@ -334,12 +336,12 @@ final class BitMapVector implements IVector {
   /**
    * Creates the block array
    *
-   * @param positions - bit position array, must be sorted!!!
+   * @param positions - bit position array, must be unique and sorted!!!
    * @return new block array
    */
   private ArrayList<NumberedBlock> storeData(int[] positions, int size) {
     ArrayList<NumberedBlock> blockArray = new ArrayList<>();
-    long[] map = new long[BITS_PER_BLOCK >> CELL_POWER];
+    int[] offsets = new int[BITS_PER_BLOCK];
     int blockStart = 0;
     int bitIdx = 0;
     for(int i = 0; i < size; ++i) {
@@ -348,20 +350,20 @@ final class BitMapVector implements IVector {
         if (bitIdx > 0) {
           // Store previous map first
           int blockIdx = blockStart >> BIT_BLOCK_POWER;
-          blockArray.add(new NumberedBlock(blockIdx, bitIdx == BITS_PER_BLOCK ? UnityBlock.instance : new BitMapBlock(map)));
-          map = new long[BITS_PER_BLOCK >> CELL_POWER];
+          blockArray.add(new NumberedBlock(blockIdx,
+              bitIdx == BITS_PER_BLOCK ? UnityBlock.instance : new BitMapBlock(offsets, bitIdx)));
           bitIdx = 0;
         }
         blockStart += BITS_PER_BLOCK;
       }
       int pos = globalPos - blockStart;
-      BitMapBlock.setBit(map, pos);
-      ++bitIdx;
+      offsets[bitIdx++] = pos;
     }
     if (bitIdx > 0) {
       // Store the rest
       int blockIdx = blockStart >> BIT_BLOCK_POWER;
-      blockArray.add(new NumberedBlock(blockIdx, bitIdx == BITS_PER_BLOCK ? UnityBlock.instance : new BitMapBlock(map)));
+      blockArray.add(new NumberedBlock(blockIdx,
+          bitIdx == BITS_PER_BLOCK ? UnityBlock.instance : new BitMapBlock(offsets, bitIdx)));
     }
     return blockArray;
   }

@@ -7,9 +7,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
 public abstract class AbstractBVector extends BVector0 implements AutoCloseable {
-  private static String CPUID_LIB_NAME = "bmcpuidj";
-  private static String LIB_NAME = "bmjni";
-  public static long MAX_BITS = 0xFFFFFFFFL;
+  private static final String CPUID_LIB_NAME = "bmcpuidj";
+  private static final String LIB_NAME = "bmjni";
+  public static final long MAX_BITS = 0xFFFFFFFFL;
 
 
   static {
@@ -48,6 +48,11 @@ public abstract class AbstractBVector extends BVector0 implements AutoCloseable 
     for(long b: bits) {
       set0(_bv, b, true);
     }
+  }
+
+  public AbstractBVector(Strategy stg, long size, int... bits) {
+    _bv = create0(stg.ordinal(), size);
+    orArr0(_bv, bits);
   }
 
   public AbstractBVector(byte[] buf) {

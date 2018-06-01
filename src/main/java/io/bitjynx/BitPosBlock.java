@@ -5,7 +5,6 @@ import java.util.stream.IntStream;
 
 class BitPosBlock extends AbstractBitPosBlock {
 
-
   BitPosBlock(short[] positions) {
     super(positions);
   }

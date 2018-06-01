@@ -3,6 +3,7 @@ package io.bitjynx;
 import java.util.stream.IntStream;
 
 interface IVector {
+
   /**
    * Calculates cardinality
    *

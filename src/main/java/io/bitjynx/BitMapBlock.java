@@ -3,28 +3,23 @@ package io.bitjynx;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
-class BitMapBlock implements IBlock {
+class BitMapBlock extends AbstractMapBlock {
 
-  final static int CELL_POWER = 6;
-  final static long HIGH_MASK = 0x8000000000000000L;
-
-  // The size is always BLOCK_SIZE / sizeof(long)
-  final private long[] _map;
+  BitMapBlock(int[] positions, int len) {
+    super(createBlock(positions, len));
+  }
 
   BitMapBlock(int[] positions) {
-    _map = new long[BitJynx.BITS_PER_BLOCK >> CELL_POWER];
-    for(int i: positions) {
-      setBit(_map, i);
-    }
+    this(positions, positions.length);
   }
 
   BitMapBlock(long[] map) {
-    _map = map;
+    super(map);
   }
 
   @Override
   public Type getType() {
-    return Type.MAP_BLOCK;
+    return Type.BIT_MAP_BLOCK;
   }
 
   @Override
@@ -37,7 +32,7 @@ class BitMapBlock implements IBlock {
   @Override
   public boolean exists(int pos) {
     int cellNo = pos >> CELL_POWER;
-    int offset = pos - (cellNo << CELL_POWER);
+    int offset = pos & CELL_BIT_MASK;
     long result = _map[cellNo] & (HIGH_MASK >>> offset);
     return result != 0;
   }
@@ -46,7 +41,7 @@ class BitMapBlock implements IBlock {
   public int lastBitPos() {
     // Linear search
     int i = _map.length - 1;
-    for( ; i >=0; --i)
+    for( ; i >= 0; --i)
       if (Long.bitCount(_map[i]) != 0)
         break;
     return i < 0 ? 0 : (i << CELL_POWER) + 63 - Long.numberOfTrailingZeros(_map[i]);
@@ -59,29 +54,51 @@ class BitMapBlock implements IBlock {
 
   @Override
   public IBlock not() {
-    long[] map = new long[_map.length];
-    for(int i = 0; i < _map.length; ++i) {
-      map[i] = ~_map[i];
-    }
-    return new BitMapBlock(map);
+    return new ZeroMapBlock(_map);
   }
 
-  @Override
+//  @Override
   public IBlock and(IBlock v2) {
     switch (v2.getType()) {
       case EMPTY_BLOCK:
         return EmptyBlock.instance;
       case UNITY_BLOCK:
         return new BitMapBlock(this._map);
-      case MAP_BLOCK: {
+      case BIT_MAP_BLOCK: {
         BitMapBlock b = (BitMapBlock) v2;
         long[] map = new long[_map.length];
-        for(int i = 0; i < _map.length; i = i + 1) {
+        long acc = 0;
+        for(int i = 0; i < _map.length; i += 1) {
           map[i] = _map[i] & b._map[i];
-//          map[i+1] = _map[i+1] & b._map[i+1];
-//          map[i+2] = _map[i+2] & b._map[i+2];
-//          map[i+3] = _map[i+3] & b._map[i+3];
+          acc |= map[i];
         }
+        return acc == 0 ? EmptyBlock.instance : new BitMapBlock(map);
+      }
+      case ZERO_MAP_BLOCK: {
+        ZeroMapBlock b = (ZeroMapBlock) v2;
+        long[] map = new long[_map.length];
+        long acc = 0;
+        for(int i = 0; i < _map.length; i += 1) {
+          map[i] = _map[i] & ~b._map[i];
+          acc |= map[i];
+        }
+        return acc == 0 ? EmptyBlock.instance : new BitMapBlock(map);
+      }
+      default:
+        throw new RuntimeException("Unsupported block type");
+    }
+  }
+
+  public IBlock and2(IBlock v2) {
+    switch (v2.getType()) {
+      case EMPTY_BLOCK:
+        return EmptyBlock.instance;
+      case UNITY_BLOCK:
+        return new BitMapBlock(this._map);
+      case BIT_MAP_BLOCK: {
+        BitMapBlock b = (BitMapBlock) v2;
+        long[] map = new long[_map.length];
+        intersect0(this._map, b._map, map);
         return new BitMapBlock(map);
       }
       default:
@@ -96,11 +113,19 @@ class BitMapBlock implements IBlock {
         return new BitMapBlock(_map);
       case UNITY_BLOCK:
         return UnityBlock.instance;
-      case MAP_BLOCK: {
+      case BIT_MAP_BLOCK: {
         BitMapBlock b = (BitMapBlock) v2;
         long[] map = new long[_map.length];
         for(int i = 0; i < _map.length; ++i) {
           map[i] = _map[i] | b._map[i];
+        }
+        return new BitMapBlock(map);
+      }
+      case ZERO_MAP_BLOCK: {
+        ZeroMapBlock b = (ZeroMapBlock) v2;
+        long[] map = new long[_map.length];
+        for (int i = 0; i < _map.length; ++i) {
+          map[i] = _map[i] | ~b._map[i];
         }
         return new BitMapBlock(map);
       }
@@ -116,11 +141,19 @@ class BitMapBlock implements IBlock {
         return new BitMapBlock(_map);
       case UNITY_BLOCK:
         return not();
-      case MAP_BLOCK: {
+      case BIT_MAP_BLOCK: {
         BitMapBlock b = (BitMapBlock) v2;
         long[] map = new long[_map.length];
         for(int i = 0; i < _map.length; ++i) {
           map[i] = _map[i] ^ b._map[i];
+        }
+        return new BitMapBlock(map);
+      }
+      case ZERO_MAP_BLOCK: {
+        ZeroMapBlock b = (ZeroMapBlock) v2;
+        long[] map = new long[_map.length];
+        for(int i = 0; i < _map.length; ++i) {
+          map[i] = _map[i] ^ ~b._map[i];
         }
         return new BitMapBlock(map);
       }
@@ -136,11 +169,19 @@ class BitMapBlock implements IBlock {
         return UnityBlock.instance;
       case UNITY_BLOCK:
         return not();
-      case MAP_BLOCK: {
+      case BIT_MAP_BLOCK: {
         BitMapBlock b = (BitMapBlock) v2;
         long[] map = new long[_map.length];
         for(int i = 0; i < _map.length; ++i) {
           map[i] = ~(_map[i] & b._map[i]);
+        }
+        return new BitMapBlock(map);
+      }
+      case ZERO_MAP_BLOCK: {
+        ZeroMapBlock b = (ZeroMapBlock) v2;
+        long[] map = new long[_map.length];
+        for(int i = 0; i < _map.length; ++i) {
+          map[i] = ~_map[i] | b._map[i];
         }
         return new BitMapBlock(map);
       }
@@ -173,9 +214,33 @@ class BitMapBlock implements IBlock {
     }
   }
 
-  static void setBit(long[] map, int pos) {
-    int cellNo = pos >> CELL_POWER;
-    int offset = pos - (cellNo << CELL_POWER);
-    map[cellNo] |= (HIGH_MASK >>> offset);
+//  static void setBit(long[] map, int pos) {
+//    int cellNo = pos >> CELL_POWER;
+//    int offset = pos & CELL_BIT_MASK;
+//    map[cellNo] |= (HIGH_MASK >>> offset);
+//  }
+
+  private final static int STEP_POWER = 2;
+  private final static int STEP = 1 << STEP_POWER;
+  private final static int STEP_MASK = STEP - 1;
+  static long[] createBlock(int[] offsets, int len) {
+    long[] cells = new long[BitJynx.BITS_PER_BLOCK >> CELL_POWER];
+    int endStep = len & ~STEP_MASK;
+    int o1, o2, o3, o4;
+    for(int i = 0; i < endStep; i += STEP) {
+      o1 = offsets[i];
+      cells[o1 >> CELL_POWER] |= (HIGH_MASK >>> (o1 & CELL_BIT_MASK));
+      o2 = offsets[i+1];
+      cells[o2 >> CELL_POWER] |= (HIGH_MASK >>> (o2 & CELL_BIT_MASK));
+      o3 = offsets[i+2];
+      cells[o3 >> CELL_POWER] |= (HIGH_MASK >>> (o3 & CELL_BIT_MASK));
+      o4 = offsets[i+3];
+      cells[o4 >> CELL_POWER] |= (HIGH_MASK >>> (o4 & CELL_BIT_MASK));
+    }
+    // Remainder
+    for(int j = endStep; j < len; ++j) {
+      cells[offsets[j] >> CELL_POWER] |= (HIGH_MASK >>> (offsets[j] & CELL_BIT_MASK));
+    }
+    return cells;
   }
 }

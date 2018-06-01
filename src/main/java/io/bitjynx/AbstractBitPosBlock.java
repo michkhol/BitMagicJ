@@ -5,6 +5,9 @@ import java.util.stream.IntStream;
 
 abstract class AbstractBitPosBlock implements IBlock {
 
+  public static native int intersect0(short[] src1, short[] src2, short[] dst);
+  public static native short[] intersect1(short[] src1, short[] src2);
+
   // Used as 'unsigned short'
   protected final short[] _positions;
 
@@ -106,6 +109,15 @@ abstract class AbstractBitPosBlock implements IBlock {
     }
     short[] result = new short[counter];
     System.arraycopy(temp, 0, result, 0, counter);
+    return result;
+  }
+
+  protected static short[] andLike1(short[] positions1, short[] positions2) {
+    final short[] temp = new short[Integer.min(positions1.length, positions2.length)];
+
+    int len = intersect0(positions1, positions2, temp);
+    short[] result = new short[len];
+    System.arraycopy(temp, 0, result, 0, len);
     return result;
   }
 

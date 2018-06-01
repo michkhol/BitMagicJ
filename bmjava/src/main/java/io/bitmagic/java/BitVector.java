@@ -2,11 +2,14 @@ package io.bitmagic.java;
 
 import io.bitmagic.core.*;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.function.BooleanSupplier;
 
 public final class BitVector extends AbstractBVector implements Iterable<Long> {
 //  public static long MAX_BITS = 0xFFFFFFFFL;
+
+  public static BitVector empty = new BitVector();
 
   /**
    * BitMagic version
@@ -44,6 +47,14 @@ public final class BitVector extends AbstractBVector implements Iterable<Long> {
    * @param bits an array of bits to set.
    */
   public BitVector(long... bits) {
+    super(Strategy.BM_BIT, MAX_BITS, bits);
+  }
+
+  /**
+   * Creates a bit vector with the default strategy and maximum size.
+   * @param bits an array of bits to set.
+   */
+  public BitVector(int... bits) {
     super(Strategy.BM_BIT, MAX_BITS, bits);
   }
 

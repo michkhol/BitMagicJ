@@ -1,16 +1,37 @@
 package io.bitjynx;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 public final class BitJynx {
   final static int BIT_BLOCK_POWER = AbstractPosVector.BIT_BLOCK_POWER;
   final static int BITS_PER_BLOCK = AbstractPosVector.BITS_PER_BLOCK;
 
-  private static final IVectorFactory factory = (int[] a, int size) -> new UnityPosVector(a, size);
+  private static final String CPUID_LIB_NAME = "bmcpuidj";
+  static {
+    String osCpuidLibName = System.mapLibraryName(CPUID_LIB_NAME);
+    try(InputStream libIs = AbstractBitPosBlock.class.getResourceAsStream("/" + osCpuidLibName)) {
+      Path libTmp = Files.createTempFile(null, null);
+      Files.copy(libIs, libTmp, StandardCopyOption.REPLACE_EXISTING);
+      System.load(libTmp.toString());
+    }
+    catch (IOException e) {
+      throw new RuntimeException("CPUID library initialization problem.", e);
+    }
+
+  }
+
+  private static final IVectorFactory factory = (int[] a, int size) -> new BitMapVector(a, size);
 
   private final IVector _internal;
 
-  public static BitJynx empty = new BitJynx(new int[0], 0);
+  public static BitJynx empty = new BitJynx(new int[0]);
 
   /**
    * Creates a new bit vector from array of bit positions
@@ -31,16 +52,6 @@ public final class BitJynx {
    */
   public BitJynx(int[] sortedUnique) {
     _internal = factory.getNewVector(sortedUnique, sortedUnique.length);
-  }
-
-  /**
-   * Creates a new bit vector from a supplier
-   *
-   * @param supplier must provide a sorted unique array of long
-   */
-  public BitJynx(IntArraySupplier supplier) {
-    int[] a = supplier.getAsIntArray();
-    _internal = factory.getNewVector(a, a.length);
   }
 
   /**
