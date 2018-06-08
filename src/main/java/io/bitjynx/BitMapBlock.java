@@ -57,15 +57,13 @@ class BitMapBlock extends AbstractMapBlock {
     return new ZeroMapBlock(_map);
   }
 
-//  @Override
-  public IBlock and(IBlock v2) {
-    switch (v2.getType()) {
+  protected IBlock and(AbstractMapBlock b) {
+    switch (b.getType()) {
       case EMPTY_BLOCK:
         return EmptyBlock.instance;
       case UNITY_BLOCK:
         return new BitMapBlock(this._map);
       case BIT_MAP_BLOCK: {
-        BitMapBlock b = (BitMapBlock) v2;
         long[] map = new long[_map.length];
         long acc = 0;
         for(int i = 0; i < _map.length; i += 1) {
@@ -75,7 +73,6 @@ class BitMapBlock extends AbstractMapBlock {
         return acc == 0 ? EmptyBlock.instance : new BitMapBlock(map);
       }
       case ZERO_MAP_BLOCK: {
-        ZeroMapBlock b = (ZeroMapBlock) v2;
         long[] map = new long[_map.length];
         long acc = 0;
         for(int i = 0; i < _map.length; i += 1) {
@@ -89,14 +86,13 @@ class BitMapBlock extends AbstractMapBlock {
     }
   }
 
-  public IBlock and2(IBlock v2) {
-    switch (v2.getType()) {
+  public IBlock and2(AbstractMapBlock b) {
+    switch (b.getType()) {
       case EMPTY_BLOCK:
         return EmptyBlock.instance;
       case UNITY_BLOCK:
         return new BitMapBlock(this._map);
       case BIT_MAP_BLOCK: {
-        BitMapBlock b = (BitMapBlock) v2;
         long[] map = new long[_map.length];
         intersect0(this._map, b._map, map);
         return new BitMapBlock(map);
@@ -106,43 +102,42 @@ class BitMapBlock extends AbstractMapBlock {
     }
   }
 
-  @Override
-  public IBlock or(IBlock v2) {
-    switch (v2.getType()) {
+  protected IBlock or(AbstractMapBlock b) {
+    switch (b.getType()) {
       case EMPTY_BLOCK:
         return new BitMapBlock(_map);
       case UNITY_BLOCK:
         return UnityBlock.instance;
       case BIT_MAP_BLOCK: {
-        BitMapBlock b = (BitMapBlock) v2;
         long[] map = new long[_map.length];
+        long acc = 0;
         for(int i = 0; i < _map.length; ++i) {
           map[i] = _map[i] | b._map[i];
+          acc &= map[i];
         }
-        return new BitMapBlock(map);
+        return acc == -1L ? UnityBlock.instance : new BitMapBlock(map);
       }
       case ZERO_MAP_BLOCK: {
-        ZeroMapBlock b = (ZeroMapBlock) v2;
         long[] map = new long[_map.length];
+        long acc = 0;
         for (int i = 0; i < _map.length; ++i) {
           map[i] = _map[i] | ~b._map[i];
+          acc &= map[i];
         }
-        return new BitMapBlock(map);
+        return acc == -1L ? UnityBlock.instance : new BitMapBlock(map);
       }
       default:
         throw new RuntimeException("Unsupported block type");
     }
   }
 
-  @Override
-  public IBlock xor(IBlock v2) {
-    switch (v2.getType()) {
+  protected IBlock xor(AbstractMapBlock b) {
+    switch (b.getType()) {
       case EMPTY_BLOCK:
         return new BitMapBlock(_map);
       case UNITY_BLOCK:
         return not();
       case BIT_MAP_BLOCK: {
-        BitMapBlock b = (BitMapBlock) v2;
         long[] map = new long[_map.length];
         for(int i = 0; i < _map.length; ++i) {
           map[i] = _map[i] ^ b._map[i];
@@ -150,7 +145,6 @@ class BitMapBlock extends AbstractMapBlock {
         return new BitMapBlock(map);
       }
       case ZERO_MAP_BLOCK: {
-        ZeroMapBlock b = (ZeroMapBlock) v2;
         long[] map = new long[_map.length];
         for(int i = 0; i < _map.length; ++i) {
           map[i] = _map[i] ^ ~b._map[i];
@@ -162,28 +156,29 @@ class BitMapBlock extends AbstractMapBlock {
     }
   }
 
-  @Override
-  public IBlock nand(IBlock v2) {
-    switch (v2.getType()) {
+  protected IBlock nand(AbstractMapBlock b) {
+    switch (b.getType()) {
       case EMPTY_BLOCK:
         return UnityBlock.instance;
       case UNITY_BLOCK:
         return not();
       case BIT_MAP_BLOCK: {
-        BitMapBlock b = (BitMapBlock) v2;
         long[] map = new long[_map.length];
+        long acc = 0;
         for(int i = 0; i < _map.length; ++i) {
           map[i] = ~(_map[i] & b._map[i]);
+          acc &= map[i];
         }
-        return new BitMapBlock(map);
+        return acc == -1L ? UnityBlock.instance : new BitMapBlock(map);
       }
       case ZERO_MAP_BLOCK: {
-        ZeroMapBlock b = (ZeroMapBlock) v2;
         long[] map = new long[_map.length];
+        long acc = 0;
         for(int i = 0; i < _map.length; ++i) {
           map[i] = ~_map[i] | b._map[i];
+          acc &= map[i];
         }
-        return new BitMapBlock(map);
+        return acc == -1L ? UnityBlock.instance : new BitMapBlock(map);
       }
       default:
         throw new RuntimeException("Unsupported block type");
