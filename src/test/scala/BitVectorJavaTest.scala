@@ -1,7 +1,7 @@
 
 import io.bitmagic.core.Strategy
 import io.bitmagic.core.{OptMode, Strategy}
-import io.bitmagic.java.BitVector
+import io.bitmagic.BitVector
 import org.scalactic.source.Position
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll, FunSuite}
 

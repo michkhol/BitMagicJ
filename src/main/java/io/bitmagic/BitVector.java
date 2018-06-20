@@ -1,4 +1,4 @@
-package io.bitmagic.java;
+package io.bitmagic;
 
 import io.bitmagic.core.*;
 
