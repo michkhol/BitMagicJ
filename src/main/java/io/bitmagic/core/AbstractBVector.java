@@ -11,12 +11,20 @@ public abstract class AbstractBVector extends BVector0 implements AutoCloseable 
   private static String LIB_NAME = "bmjni";
   public static long MAX_BITS = 0xFFFFFFFFL;
 
+  private static InputStream getResourceStream(String libName) {
+    InputStream is = AbstractBVector.class.getResourceAsStream("/native/" + libName);
+    if (is == null)
+      is = AbstractBVector.class.getResourceAsStream("/" + libName);
+    if (is == null)
+      throw new RuntimeException("Native library not found in classpath");
+    return is;
+  }
 
   static {
     // Get the library name based on the current instruction set
     String osCpuidLibName = System.mapLibraryName(CPUID_LIB_NAME);
     String libName = LIB_NAME;
-    try(InputStream libIs = AbstractBVector.class.getResourceAsStream("/" + osCpuidLibName)) {
+    try(InputStream libIs = getResourceStream(osCpuidLibName)) {
       Path libTmp = Files.createTempFile(null, null);
       Files.copy(libIs, libTmp, StandardCopyOption.REPLACE_EXISTING);
       System.load(libTmp.toString());
@@ -27,7 +35,7 @@ public abstract class AbstractBVector extends BVector0 implements AutoCloseable 
     }
     System.out.println("Current library name: " + libName);
     String osLibName = System.mapLibraryName(libName);
-    try(InputStream libIs = AbstractBVector.class.getResourceAsStream("/" + osLibName)) {
+    try(InputStream libIs = getResourceStream(osLibName)) {
       Path libTmp = Files.createTempFile(null, null);
       Files.copy(libIs, libTmp, StandardCopyOption.REPLACE_EXISTING);
       System.load(libTmp.toString());
