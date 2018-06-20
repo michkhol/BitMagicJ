@@ -6,6 +6,74 @@ import org.scalactic.source.Position
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll, FunSuite}
 
 import scala.collection.JavaConverters._
+import scala.util.Random
+
+object BitVectorJavaTest {
+
+  // Generators
+
+  // generate pseudo-random bit-vector, mix of compressed/non-compressed blocks
+  def generateBVector(vectorMax: Int = 40000000): BitVector = {
+    val bv = new BitVector()
+    var i, j: Int = 0
+    do {
+      // generate bit blocks
+      do {
+        bv.set(i, true)
+        i += 10
+        j += 1
+      } while(j < 65535 * 8 && i < vectorMax)
+      if (i >= vectorMax)
+        return bv
+      // Generate GAP (compressed) blocks
+      j = 0
+      do {
+        val len = Random.nextInt(64)
+        bv.setRange(i, i + len, true)
+        i += len
+        if (i > vectorMax)
+          return bv
+
+        j += 1
+        i += 120
+      } while(j < 65535)
+    } while(i < vectorMax)
+  }
+
+  // Interval filling.
+  // 111........111111........111111..........11111111.......1111111...
+  def intervalFilling(min: Int, max: Int, fillFactor: Int, setFlag: Boolean = true): BitVector = {
+    val bv = new BitVector()
+    var ff = fillFactor
+    while(ff == 0) ff = Random.nextInt(10)
+    var i = min
+    var j: Int = 0
+    val factor = 10 * ff
+    while (i < max) {
+      var len, end: Int = 0
+      do {
+        len = Random.nextInt(factor)
+        end += i + len
+      } while (end >= max)
+      j = i
+      while (j < end) {
+        bv.set(j, setFlag)
+        j += 1
+      }
+      i = end
+      len = Random.nextInt(10)
+      i += len
+      var k = 0
+      while(k < 1000 && i < max) {
+        bv.set(i, setFlag)
+        k +=3
+        i +=3
+      }
+      i +=1
+    }
+    bv
+  }
+}
 
 class BitVectorJavaTest extends FunSuite with BeforeAndAfterAll {
 
