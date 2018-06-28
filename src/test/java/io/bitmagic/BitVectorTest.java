@@ -120,6 +120,23 @@ public class BitVectorTest {
   }
 
   @Test
+  public void serialization() {
+    BitVector bv = new BitVector();
+    boolean bit = true;
+    long limit = 1000000L;
+    for(long idx = 0; idx < limit; idx++) {
+      bit = !bit;
+      bv.set(idx, bit);
+    }
+    System.out.println("Bit count1: " + bv.count());
+    byte[] serialized = bv.toArray();
+    System.out.println("Serialized length:" + serialized.length);
+    BitVector bv2 = new BitVector(serialized);
+    System.out.println("Bit count2: " + bv2.count());
+    assertEquals(bv.count(), bv2.count());
+  }
+
+  @Test
   public void BitCountTest()
   {
     BitVector  bv = new BitVector();

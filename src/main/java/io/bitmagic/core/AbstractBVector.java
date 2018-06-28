@@ -16,7 +16,7 @@ public abstract class AbstractBVector extends BVector0 implements AutoCloseable 
     if (is == null)
       is = AbstractBVector.class.getResourceAsStream("/" + libName);
     if (is == null)
-      throw new RuntimeException("Native library not found in classpath");
+      throw new RuntimeException("Native library " + libName + " not found in classpath");
     return is;
   }
 
